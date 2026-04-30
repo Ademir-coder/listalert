@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 const fs = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
@@ -19,6 +20,7 @@ const RESEND_API_KEY = "re_Q4BcWaxr_CSuKpFbaRCGbqFYg1CYajSTX";
 const EMAIL_FROM = "onboarding@resend.dev";
 
 app.use(express.json());
+app.use(cors({ origin: "*" }));
 app.use(express.static(BASE_DIR));
 
 app.post("/save-alert", async (req, res) => {

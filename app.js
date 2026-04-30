@@ -167,7 +167,7 @@ async function fetchProperties(criteria) {
 }
 
 async function saveAlertToBackend(savedAlert) {
-  const response = await fetch("http://localhost:3000/save-alert", {
+  const response = await fetch("https://listalert-production.up.railway.app/save-alert", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
