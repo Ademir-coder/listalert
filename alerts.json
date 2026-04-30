@@ -1,0 +1,29 @@
+[
+  {
+    "id": "b6a54a588f2298b89b523453",
+    "email": "eshagh.mashreghi2611@gmail.com",
+    "criteria": {
+      "city": "Los Angeles",
+      "propertyType": "house",
+      "minPrice": "350000",
+      "maxPrice": "500000",
+      "bedrooms": "1",
+      "maxAge": "20"
+    },
+    "updatedAt": "2026-04-29T22:52:18.446Z"
+  },
+  {
+    "id": "f5c76f93532d62d378a0b94e",
+    "email": "demir.arslan2611@gmail.com",
+    "criteria": {
+      "city": "Los Angeles",
+      "propertyType": "house",
+      "minPrice": "350000",
+      "maxPrice": "500000",
+      "bedrooms": "1",
+      "maxAge": "20"
+    },
+    "updatedAt": "2026-04-29T22:53:23.511Z",
+    "createdAt": "2026-04-29T22:53:23.511Z"
+  }
+]

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Property Search</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="top-nav">
+      <a href="#" class="brand">ListAlert</a>
+      <a href="#search-section" class="get-started-btn">Get Started</a>
+    </header>
+
+    <main class="container">
+      <section class="hero">
+        <p class="eyebrow">Always-On Listing Alerts</p>
+        <h1>Get Notified First. Never Miss Your Perfect Home.</h1>
+        <p class="subtitle">
+          Set your criteria once. We monitor listings 24/7 and alert you the second your perfect
+          property drops.
+        </p>
+      </section>
+
+      <section class="panel" id="search-section">
+        <form id="search-form" class="search-form">
+          <label>
+            City
+            <input type="text" id="city" name="city" placeholder="e.g. Houston" />
+          </label>
+
+          <label>
+            Property Type
+            <select id="propertyType" name="propertyType" required>
+              <option value="house">House</option>
+              <option value="apartment">Apartment</option>
+            </select>
+          </label>
+
+          <label>
+            Min Price
+            <input type="number" id="minPrice" name="minPrice" min="0" placeholder="100000" />
+          </label>
+
+          <label>
+            Max Price
+            <input type="number" id="maxPrice" name="maxPrice" min="0" placeholder="500000" />
+          </label>
+
+          <label>
+            Bedrooms
+            <input type="number" id="bedrooms" name="bedrooms" min="0" step="1" placeholder="3" />
+          </label>
+
+          <label>
+            Max Property Age (Years)
+            <input
+              type="number"
+              id="maxAge"
+              name="maxAge"
+              min="0"
+              step="1"
+              placeholder="20"
+            />
+          </label>
+
+          <button type="submit" id="search-btn">Search</button>
+
+          <div class="alert-controls">
+            <label>
+              Alert Email
+              <input type="email" id="alertEmail" name="alertEmail" placeholder="you@example.com" />
+            </label>
+            <button type="button" id="save-alert-btn">Save Alert</button>
+          </div>
+        </form>
+      </section>
+
+      <p id="status" class="status"></p>
+      <section id="alert-badge" class="alert-badge hidden" aria-live="polite"></section>
+      <section id="results" class="results-grid" aria-live="polite"></section>
+
+      <section class="how-it-works" aria-label="How it works">
+        <div class="how-header">
+          <p class="how-kicker">How It Works</p>
+          <h2>Three simple steps to stay ahead of the market</h2>
+        </div>
+
+        <div class="steps-grid">
+          <article class="step-card">
+            <div class="step-icon" aria-hidden="true">1</div>
+            <h3>Set Your Criteria</h3>
+            <p>Choose your city, price range, bedrooms and property type.</p>
+          </article>
+
+          <article class="step-card">
+            <div class="step-icon" aria-hidden="true">2</div>
+            <h3>We Monitor 24/7</h3>
+            <p>Our system watches every new listing the moment it hits the market.</p>
+          </article>
+
+          <article class="step-card">
+            <div class="step-icon" aria-hidden="true">3</div>
+            <h3>You Get Notified First</h3>
+            <p>
+              Instant alert straight to your email before other buyers even know it exists.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="pricing" aria-label="Pricing plans">
+        <div class="pricing-header">
+          <p class="pricing-kicker">Pricing</p>
+          <h2>Simple plans for every kind of buyer</h2>
+        </div>
+
+        <div class="pricing-grid">
+          <article class="plan-card">
+            <p class="plan-name">Consumer Plan</p>
+            <p class="plan-price">$15 <span>one time</span></p>
+            <ul class="plan-features">
+              <li>30 days of alerts</li>
+              <li>Up to 3 saved searches</li>
+              <li>Email notifications on new matches</li>
+            </ul>
+          </article>
+
+          <article class="plan-card featured-plan">
+            <p class="plan-badge">Most Popular</p>
+            <p class="plan-name">Realtor Plan</p>
+            <p class="plan-price">$49 <span>/month</span></p>
+            <ul class="plan-features">
+              <li>Unlimited saved searches</li>
+              <li>Multiple buyer profiles</li>
+              <li>Priority alerts</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p class="footer-tagline">Never miss your perfect home again.</p>
+      <p class="footer-copy">Copyright © 2026 ListAlert. All rights reserved.</p>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
