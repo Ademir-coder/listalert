@@ -18,6 +18,9 @@ const SIMPLYRETS_PASSWORD = "simplyrets";
 const RESEND_API_URL = "https://api.resend.com/emails";
 const RESEND_API_KEY = "re_Q4BcWaxr_CSuKpFbaRCGbqFYg1CYajSTX";
 const EMAIL_FROM = "onboarding@resend.dev";
+const ALERT_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+
+let isScheduledCheckRunning = false;
 
 app.use(express.json());
 app.use(cors({ origin: "*" }));
@@ -55,37 +58,8 @@ app.post("/save-alert", async (req, res) => {
 
 app.post("/check-alerts", async (_req, res) => {
   try {
-    const alerts = await readJsonFile(ALERTS_FILE, []);
-    const seenMap = await readJsonFile(SEEN_LISTINGS_FILE, {});
-    let emailsSent = 0;
-    let alertsChecked = 0;
-
-    for (const alert of alerts) {
-      alertsChecked += 1;
-      const listings = await fetchSimplyRetsListings(alert.criteria);
-      const currentIds = new Set(listings.map(getListingId).filter(Boolean));
-      const previousIds = new Set(seenMap[alert.id] || []);
-
-      const newMatches = listings.filter((listing) => {
-        const id = getListingId(listing);
-        return id && !previousIds.has(id);
-      });
-
-      if (newMatches.length > 0 && previousIds.size > 0) {
-        await sendAlertEmail(alert.email, alert.criteria, newMatches);
-        emailsSent += 1;
-      }
-
-      seenMap[alert.id] = [...currentIds];
-    }
-
-    await writeJsonFile(SEEN_LISTINGS_FILE, seenMap);
-
-    return res.json({
-      success: true,
-      alertsChecked,
-      emailsSent,
-    });
+    const summary = await runAlertCheckCycle();
+    return res.json({ success: true, ...summary });
   } catch (error) {
     console.error("Failed to check alerts:", error);
     return res.status(500).json({ error: "Failed to check alerts." });
@@ -95,6 +69,22 @@ app.post("/check-alerts", async (_req, res) => {
 app.listen(PORT, () => {
   console.log(`ListAlert server running at http://localhost:${PORT}`);
 });
+
+setInterval(async () => {
+  if (isScheduledCheckRunning) return;
+  isScheduledCheckRunning = true;
+
+  try {
+    const summary = await runAlertCheckCycle();
+    console.log(
+      `Scheduled alert check complete. Checked: ${summary.alertsChecked}, emails sent: ${summary.emailsSent}`
+    );
+  } catch (error) {
+    console.error("Scheduled alert check failed:", error);
+  } finally {
+    isScheduledCheckRunning = false;
+  }
+}, ALERT_CHECK_INTERVAL_MS);
 
 function buildAlertId(email, criteria) {
   const raw = JSON.stringify({ email: email.toLowerCase(), criteria });
@@ -164,7 +154,7 @@ async function sendAlertEmail(to, criteria, listings) {
     body: JSON.stringify({
       from: EMAIL_FROM,
       to,
-      subject: "New ListAlert Match Found",
+      subject: "New Listing Match Found!",
       html,
       text,
     }),
@@ -228,13 +218,14 @@ function buildAlertEmailHtml(criteria, listings) {
       const price = formatPrice(listing.listPrice);
       const beds = listing.property?.bedrooms ?? "N/A";
       const baths = listing.property?.bathsFull ?? listing.property?.bathrooms ?? "N/A";
+      const yearBuilt = listing.property?.yearBuilt ?? "N/A";
 
       return `
       <tr>
         <td style="padding:12px 0;border-bottom:1px solid #e2e8f0;">
           <div style="font-weight:600;color:#0f172a;">${escapeHtml(address)}</div>
           <div style="color:#475569;font-size:14px;margin-top:4px;">
-            Price: ${escapeHtml(price)} | Bedrooms: ${escapeHtml(String(beds))} | Bathrooms: ${escapeHtml(String(baths))}
+            Price: ${escapeHtml(price)} | Bedrooms: ${escapeHtml(String(beds))} | Bathrooms: ${escapeHtml(String(baths))} | Year Built: ${escapeHtml(String(yearBuilt))}
           </div>
         </td>
       </tr>`;
@@ -264,7 +255,8 @@ function buildAlertEmailText(listings) {
       const price = formatPrice(listing.listPrice);
       const beds = listing.property?.bedrooms ?? "N/A";
       const baths = listing.property?.bathsFull ?? listing.property?.bathrooms ?? "N/A";
-      return `${address} | Price: ${price} | Bedrooms: ${beds} | Bathrooms: ${baths}`;
+      const yearBuilt = listing.property?.yearBuilt ?? "N/A";
+      return `${address} | Price: ${price} | Bedrooms: ${beds} | Bathrooms: ${baths} | Year Built: ${yearBuilt}`;
     })
     .join("\n");
 
@@ -292,6 +284,39 @@ async function readJsonFile(filePath, fallback) {
 
 async function writeJsonFile(filePath, data) {
   await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf8");
+}
+
+async function runAlertCheckCycle() {
+  const alerts = await readJsonFile(ALERTS_FILE, []);
+  const seenMap = await readJsonFile(SEEN_LISTINGS_FILE, {});
+  let emailsSent = 0;
+  let alertsChecked = 0;
+
+  for (const alert of alerts) {
+    alertsChecked += 1;
+    const listings = await fetchSimplyRetsListings(alert.criteria);
+    const currentIds = new Set(listings.map(getListingId).filter(Boolean));
+    const previousIds = new Set(seenMap[alert.id] || []);
+
+    const newMatches = listings.filter((listing) => {
+      const id = getListingId(listing);
+      return id && !previousIds.has(id);
+    });
+
+    if (newMatches.length > 0) {
+      await sendAlertEmail(alert.email, alert.criteria, newMatches);
+      emailsSent += 1;
+    }
+
+    seenMap[alert.id] = [...currentIds];
+  }
+
+  await writeJsonFile(SEEN_LISTINGS_FILE, seenMap);
+
+  return {
+    alertsChecked,
+    emailsSent,
+  };
 }
 
 function escapeHtml(value) {
