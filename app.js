@@ -11,10 +11,36 @@ const searchBtn = document.getElementById("search-btn");
 const saveAlertBtn = document.getElementById("save-alert-btn");
 const alertEmailEl = document.getElementById("alertEmail");
 const alertBadgeEl = document.getElementById("alert-badge");
+const aiQueryEl = document.getElementById("aiQuery");
+const aiSearchBtn = document.getElementById("ai-search-btn");
 
 let pollTimer = null;
 let previousAlertListingIds = new Set();
 let isPollingInProgress = false;
+
+aiSearchBtn.addEventListener("click", async () => {
+  const query = aiQueryEl.value.trim();
+  if (!query) {
+    statusEl.textContent = "Please describe your ideal property first.";
+    return;
+  }
+
+  const originalText = aiSearchBtn.textContent;
+  aiSearchBtn.disabled = true;
+  aiSearchBtn.textContent = "Analyzing...";
+  statusEl.textContent = "Claude is parsing your request...";
+
+  try {
+    const parsedCriteria = await parseCriteriaWithAI(query);
+    applyParsedCriteriaToForm(parsedCriteria);
+    statusEl.textContent = "Your criteria were filled in automatically. You can now hit Search.";
+  } catch (error) {
+    statusEl.textContent = `AI search failed: ${error.message}`;
+  } finally {
+    aiSearchBtn.disabled = false;
+    aiSearchBtn.textContent = originalText;
+  }
+});
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -184,6 +210,56 @@ async function saveAlertToBackend(savedAlert) {
       // Keep fallback message when backend response is not JSON.
     }
     throw new Error(message);
+  }
+}
+
+async function parseCriteriaWithAI(query) {
+  const response = await fetch("/parse-natural-search", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  if (!response.ok) {
+    let message = `AI endpoint failed (${response.status})`;
+    try {
+      const payload = await response.json();
+      if (payload?.error) message = payload.error;
+    } catch {
+      // Keep fallback error if payload is not JSON.
+    }
+    throw new Error(message);
+  }
+
+  const payload = await response.json();
+  if (!payload?.criteria || typeof payload.criteria !== "object") {
+    throw new Error("Invalid AI response payload.");
+  }
+
+  return payload.criteria;
+}
+
+function applyParsedCriteriaToForm(criteria) {
+  if (criteria.city) document.getElementById("city").value = String(criteria.city);
+  if (criteria.propertyType) {
+    const type = String(criteria.propertyType).toLowerCase();
+    if (type === "house" || type === "apartment") {
+      document.getElementById("propertyType").value = type;
+    }
+  }
+  if (criteria.minPrice !== undefined && criteria.minPrice !== null) {
+    document.getElementById("minPrice").value = String(criteria.minPrice);
+  }
+  if (criteria.maxPrice !== undefined && criteria.maxPrice !== null) {
+    document.getElementById("maxPrice").value = String(criteria.maxPrice);
+  }
+  if (criteria.bedrooms !== undefined && criteria.bedrooms !== null) {
+    document.getElementById("bedrooms").value = String(criteria.bedrooms);
+  }
+  if (criteria.maxAge !== undefined && criteria.maxAge !== null) {
+    document.getElementById("maxAge").value = String(criteria.maxAge);
   }
 }
 

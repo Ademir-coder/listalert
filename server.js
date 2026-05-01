@@ -18,8 +18,8 @@ const SIMPLYRETS_PASSWORD = "simplyrets";
 const RESEND_API_URL = "https://api.resend.com/emails";
 const RESEND_API_KEY = "re_Q4BcWaxr_CSuKpFbaRCGbqFYg1CYajSTX";
 const EMAIL_FROM = "onboarding@resend.dev";
-const ALERT_CHECK_INTERVAL_MS = 2 * 60 * 1000;
-const FORCE_SEND_TEST_EMAILS = true;
+const ALERT_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+const FORCE_SEND_TEST_EMAILS = false;
 
 let isScheduledCheckRunning = false;
 
@@ -64,6 +64,21 @@ app.post("/check-alerts", async (_req, res) => {
   } catch (error) {
     console.error("Failed to check alerts:", error);
     return res.status(500).json({ error: "Failed to check alerts." });
+  }
+});
+
+app.post("/parse-natural-search", async (req, res) => {
+  try {
+    const query = String(req.body?.query || "").trim();
+    if (!query) {
+      return res.status(400).json({ error: "Query is required." });
+    }
+
+    const criteria = await parseNaturalQueryWithClaude(query);
+    return res.json({ success: true, criteria });
+  } catch (error) {
+    console.error("Failed to parse natural search query:", error);
+    return res.status(500).json({ error: "Failed to parse natural language search query." });
   }
 });
 
@@ -320,6 +335,119 @@ async function runAlertCheckCycle() {
     alertsChecked,
     emailsSent,
   };
+}
+
+async function parseNaturalQueryWithClaude(query) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error("ANTHROPIC_API_KEY is not configured on the server.");
+  }
+
+  const currentYear = new Date().getFullYear();
+  const systemPrompt =
+    "You convert real-estate search text into JSON. Respond with ONLY valid JSON, no markdown.";
+  const userPrompt = `
+Parse this property search request into JSON with keys:
+{
+  "city": string or null,
+  "propertyType": "house" | "apartment" | null,
+  "minPrice": number or null,
+  "maxPrice": number or null,
+  "bedrooms": number or null,
+  "maxAge": number or null
+}
+
+Rules:
+- If location looks like state/region (e.g. Arizona), put it in "city" anyway.
+- If user says "built after YEAR", convert to maxAge based on current year ${currentYear}.
+- Normalize price values like 350k -> 350000.
+- If unknown, use null.
+
+Input: ${query}
+`;
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 300,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Claude API failed (${response.status}): ${errorBody}`);
+  }
+
+  const payload = await response.json();
+  const contentText = payload?.content?.[0]?.text;
+  if (!contentText) {
+    throw new Error("Claude response did not contain text content.");
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(contentText);
+  } catch {
+    // Fallback in case Claude wraps JSON in extra text.
+    const jsonStart = contentText.indexOf("{");
+    const jsonEnd = contentText.lastIndexOf("}");
+    if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
+      throw new Error("Claude response was not valid JSON.");
+    }
+    parsed = JSON.parse(contentText.slice(jsonStart, jsonEnd + 1));
+  }
+
+  return sanitizeParsedCriteria(parsed, currentYear);
+}
+
+function sanitizeParsedCriteria(criteria, currentYear) {
+  const normalized = {
+    city: normalizeOptionalString(criteria?.city),
+    propertyType: normalizePropertyType(criteria?.propertyType),
+    minPrice: normalizeOptionalNumber(criteria?.minPrice),
+    maxPrice: normalizeOptionalNumber(criteria?.maxPrice),
+    bedrooms: normalizeOptionalNumber(criteria?.bedrooms),
+    maxAge: normalizeOptionalNumber(criteria?.maxAge),
+  };
+
+  if (criteria?.yearBuiltAfter && normalized.maxAge === null) {
+    const year = Number(criteria.yearBuiltAfter);
+    if (!Number.isNaN(year) && year > 1800 && year <= currentYear) {
+      normalized.maxAge = currentYear - year;
+    }
+  }
+
+  return normalized;
+}
+
+function normalizeOptionalString(value) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
+}
+
+function normalizePropertyType(value) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).toLowerCase().trim();
+  if (text.includes("house")) return "house";
+  if (text.includes("apartment") || text.includes("apt")) return "apartment";
+  return null;
+}
+
+function normalizeOptionalNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  if (Number.isNaN(num)) return null;
+  if (num < 0) return null;
+  return Math.round(num);
 }
 
 function escapeHtml(value) {
