@@ -18,7 +18,8 @@ const SIMPLYRETS_PASSWORD = "simplyrets";
 const RESEND_API_URL = "https://api.resend.com/emails";
 const RESEND_API_KEY = "re_Q4BcWaxr_CSuKpFbaRCGbqFYg1CYajSTX";
 const EMAIL_FROM = "onboarding@resend.dev";
-const ALERT_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+const ALERT_CHECK_INTERVAL_MS = 2 * 60 * 1000;
+const FORCE_SEND_TEST_EMAILS = true;
 
 let isScheduledCheckRunning = false;
 
@@ -303,8 +304,10 @@ async function runAlertCheckCycle() {
       return id && !previousIds.has(id);
     });
 
-    if (newMatches.length > 0) {
-      await sendAlertEmail(alert.email, alert.criteria, newMatches);
+    const matchesToEmail = FORCE_SEND_TEST_EMAILS ? listings : newMatches;
+
+    if (matchesToEmail.length > 0) {
+      await sendAlertEmail(alert.email, alert.criteria, matchesToEmail);
       emailsSent += 1;
     }
 
