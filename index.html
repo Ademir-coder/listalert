@@ -3,165 +3,284 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Property Search</title>
+    <title>ListAlert — Catch listings before anyone else</title>
+    <meta name="description" content="AI-powered real estate search and instant listing alerts. Used by top realtors to catch properties before anyone else." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header class="top-nav">
-      <a href="#" class="brand">ListAlert</a>
-      <a href="#search-section" class="get-started-btn">Get Started</a>
+    <div class="orb orb-1" aria-hidden="true"></div>
+    <div class="orb orb-2" aria-hidden="true"></div>
+    <div class="orb orb-3" aria-hidden="true"></div>
+    <div class="grid-bg" aria-hidden="true"></div>
+
+    <header class="nav">
+      <a href="#" class="brand">
+        <span class="brand-mark"></span>
+        <span class="brand-name">ListAlert</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+      </nav>
+      <a href="#hero" class="nav-cta">
+        Get Started
+        <span class="arrow">→</span>
+      </a>
     </header>
 
-    <main class="container">
-      <section class="hero">
-        <p class="eyebrow">Always-On Listing Alerts</p>
-        <h1>Get Notified First. Never Miss Your Perfect Home.</h1>
-        <p class="subtitle">
-          Set your criteria once. We monitor listings 24/7 and alert you the second your perfect
-          property drops.
-        </p>
-      </section>
+    <main>
+      <section class="hero" id="hero">
+        <div class="hero-inner">
+          <a class="hero-badge" href="#features">
+            <span class="hero-badge-dot"></span>
+            Now live · AI-powered listing intelligence
+            <span class="arrow">→</span>
+          </a>
 
-      <section class="ai-search" id="ai-search">
-        <label for="aiQuery" class="ai-label">AI Property Assistant</label>
-        <div class="ai-search-row">
-          <input
-            type="text"
-            id="aiQuery"
-            name="aiQuery"
-            placeholder="Try: 3 bedroom house in Houston between 300k-400k built after 2010"
-          />
-          <button type="button" id="ai-search-btn">✨ Search with AI</button>
-        </div>
-      </section>
+          <h1 class="hero-title">
+            Catch listings <em>before</em><br />anyone else.
+          </h1>
+          <p class="hero-sub">
+            ListAlert pairs natural-language property search with realtime alerts the moment a
+            listing hits the market. Built for buyers, agents, and investors who refuse to be late.
+          </p>
 
-      <section class="panel" id="search-section">
-        <form id="search-form" class="search-form">
-          <label>
-            City
-            <input type="text" id="city" name="city" placeholder="e.g. Houston" />
-          </label>
+          <div class="hero-card glass">
+            <div class="tabs" role="tablist">
+              <button class="tab is-active" role="tab" aria-selected="true" data-tab="ai">
+                <span class="tab-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/><path d="m12 3 2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z"/></svg>
+                </span>
+                AI Search
+              </button>
+              <button class="tab" role="tab" aria-selected="false" data-tab="alert">
+                <span class="tab-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                </span>
+                Realtor Alert
+              </button>
+              <span class="tab-indicator"></span>
+            </div>
 
-          <label>
-            Property Type
-            <select id="propertyType" name="propertyType" required>
-              <option value="house">House</option>
-              <option value="apartment">Apartment</option>
-            </select>
-          </label>
+            <!-- AI SEARCH PANEL -->
+            <div class="tab-panel is-active" data-panel="ai">
+              <div class="ai-search-shell">
+                <div class="ai-search-glow"></div>
+                <span class="ai-search-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                </span>
+                <input
+                  type="text"
+                  id="aiQuery"
+                  placeholder="3 bed house in Austin under 600k built after 2015"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button type="button" id="aiBtn" class="btn-primary">
+                  <span class="btn-label">Search</span>
+                  <span class="btn-shine" aria-hidden="true"></span>
+                </button>
+              </div>
 
-          <label>
-            Min Price
-            <input type="number" id="minPrice" name="minPrice" min="0" placeholder="100000" />
-          </label>
+              <div class="suggestions">
+                <span class="suggestions-label">Try</span>
+                <button class="chip" data-q="Modern 4 bedroom house in Houston under 800k">Modern 4 bed in Houston under 800k</button>
+                <button class="chip" data-q="Apartment in Austin between 250k and 400k">Apartment in Austin · 250k–400k</button>
+                <button class="chip" data-q="3 bed house built after 2015 under 500k">New build · under 500k</button>
+              </div>
+            </div>
 
-          <label>
-            Max Price
-            <input type="number" id="maxPrice" name="maxPrice" min="0" placeholder="500000" />
-          </label>
-
-          <label>
-            Bedrooms
-            <input type="number" id="bedrooms" name="bedrooms" min="0" step="1" placeholder="3" />
-          </label>
-
-          <label>
-            Max Property Age (Years)
-            <input
-              type="number"
-              id="maxAge"
-              name="maxAge"
-              min="0"
-              step="1"
-              placeholder="20"
-            />
-          </label>
-
-          <button type="submit" id="search-btn">Search</button>
-
-          <div class="alert-controls">
-            <label>
-              Alert Email
-              <input type="email" id="alertEmail" name="alertEmail" placeholder="you@example.com" />
-            </label>
-            <button type="button" id="save-alert-btn">Save Alert</button>
+            <!-- REALTOR ALERT PANEL -->
+            <div class="tab-panel" data-panel="alert">
+              <p class="panel-sub">Used by top realtors to catch listings before anyone else.</p>
+              <form id="alertForm" class="alert-grid">
+                <label class="field">
+                  <span class="field-label">City</span>
+                  <input type="text" id="alertCity" placeholder="Austin" autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span class="field-label">Property Type</span>
+                  <div class="select-shell">
+                    <select id="alertType">
+                      <option value="">Any</option>
+                      <option value="house">House</option>
+                      <option value="apartment">Apartment</option>
+                    </select>
+                    <span class="select-caret" aria-hidden="true">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </span>
+                  </div>
+                </label>
+                <label class="field">
+                  <span class="field-label">Min Price</span>
+                  <input type="number" id="alertMinPrice" placeholder="200,000" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field-label">Max Price</span>
+                  <input type="number" id="alertMaxPrice" placeholder="800,000" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field-label">Bedrooms</span>
+                  <input type="number" id="alertBeds" placeholder="3" min="0" step="1" />
+                </label>
+                <label class="field field-wide">
+                  <span class="field-label">Email</span>
+                  <input type="email" id="alertEmail" placeholder="you@brokerage.com" autocomplete="email" />
+                </label>
+                <button type="submit" class="btn-primary btn-block">
+                  <span class="btn-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;vertical-align:-2px"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    Activate Alert
+                  </span>
+                  <span class="btn-shine" aria-hidden="true"></span>
+                </button>
+              </form>
+            </div>
           </div>
-        </form>
-      </section>
 
-      <p id="status" class="status"></p>
-      <section id="alert-badge" class="alert-badge hidden" aria-live="polite"></section>
-      <section id="results" class="results-grid" aria-live="polite"></section>
-
-      <section class="how-it-works" aria-label="How it works">
-        <div class="how-header">
-          <p class="how-kicker">How It Works</p>
-          <h2>Three simple steps to stay ahead of the market</h2>
-        </div>
-
-        <div class="steps-grid">
-          <article class="step-card">
-            <div class="step-icon" aria-hidden="true">1</div>
-            <h3>Set Your Criteria</h3>
-            <p>Choose your city, price range, bedrooms and property type.</p>
-          </article>
-
-          <article class="step-card">
-            <div class="step-icon" aria-hidden="true">2</div>
-            <h3>We Monitor 24/7</h3>
-            <p>Our system watches every new listing the moment it hits the market.</p>
-          </article>
-
-          <article class="step-card">
-            <div class="step-icon" aria-hidden="true">3</div>
-            <h3>You Get Notified First</h3>
-            <p>
-              Instant alert straight to your email before other buyers even know it exists.
-            </p>
-          </article>
+          <div class="hero-meta">
+            <div class="hero-meta-item">
+              <strong>30 min</strong>
+              <span>average lead time before public listing</span>
+            </div>
+            <div class="hero-meta-divider"></div>
+            <div class="hero-meta-item">
+              <strong>2,400+</strong>
+              <span>realtors using ListAlert daily</span>
+            </div>
+            <div class="hero-meta-divider"></div>
+            <div class="hero-meta-item">
+              <strong>24/7</strong>
+              <span>continuous market monitoring</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section class="pricing" aria-label="Pricing plans">
-        <div class="pricing-header">
-          <p class="pricing-kicker">Pricing</p>
-          <h2>Simple plans for every kind of buyer</h2>
+      <section class="results-section" id="results-section" hidden>
+        <div class="results-header">
+          <div>
+            <p class="kicker">Live results</p>
+            <h2 id="resultsTitle">Properties</h2>
+          </div>
+          <p class="results-sub" id="resultsSub"></p>
+        </div>
+        <div id="status" class="status" aria-live="polite"></div>
+        <div id="results" class="listings-grid" aria-live="polite"></div>
+      </section>
+
+      <section class="features" id="features">
+        <div class="section-head">
+          <p class="kicker">Two products. One platform.</p>
+          <h2>Built for both sides of the deal.</h2>
         </div>
 
-        <div class="pricing-grid">
-          <article class="plan-card">
-            <p class="plan-name">Consumer Plan</p>
-            <p class="plan-price">$15 <span>one time</span></p>
-            <ul class="plan-features">
-              <li>30 days of alerts</li>
-              <li>Up to 3 saved searches</li>
-              <li>Email notifications on new matches</li>
+        <div class="feature-split">
+          <article class="feature-card glass">
+            <div class="feature-glow feature-glow-violet"></div>
+            <div class="feature-tag">For Buyers</div>
+            <h3>AI Search that speaks your language</h3>
+            <p>Forget filter checkboxes. Type the property you want — in plain English — and ListAlert decodes price, beds, neighborhoods, build year and matches against live MLS data in milliseconds.</p>
+            <ul class="feature-list">
+              <li><span class="check">✓</span> Natural language → structured search</li>
+              <li><span class="check">✓</span> Live MLS results, no stale listings</li>
+              <li><span class="check">✓</span> Refine instantly with follow-up queries</li>
             </ul>
           </article>
 
-          <article class="plan-card featured-plan">
-            <p class="plan-badge">Most Popular</p>
-            <p class="plan-name">Realtor Plan</p>
-            <p class="plan-price">$49 <span>/month</span></p>
-            <ul class="plan-features">
-              <li>Unlimited saved searches</li>
-              <li>Multiple buyer profiles</li>
-              <li>Priority alerts</li>
+          <article class="feature-card glass">
+            <div class="feature-glow feature-glow-cyan"></div>
+            <div class="feature-tag feature-tag-cyan">For Realtors & Investors</div>
+            <h3>Alerts that fire before the market reacts</h3>
+            <p>Set criteria once. We watch the wire 24/7 and email you the second a matching listing appears — minutes, sometimes hours, before it lands on Zillow.</p>
+            <ul class="feature-list">
+              <li><span class="check">✓</span> Sub-minute notification latency</li>
+              <li><span class="check">✓</span> Multiple buyer profiles per account</li>
+              <li><span class="check">✓</span> One-click activation per saved search</li>
             </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="how" id="how">
+        <div class="section-head">
+          <p class="kicker">How it works</p>
+          <h2>Three steps. Zero friction.</h2>
+        </div>
+
+        <div class="steps">
+          <article class="step glass">
+            <div class="step-number">01</div>
+            <h3>Define your target</h3>
+            <p>Set city, price, beds and property type — or just describe the home in your own words. ListAlert handles the rest.</p>
+          </article>
+          <article class="step glass">
+            <div class="step-number">02</div>
+            <h3>We watch the market</h3>
+            <p>A constant feed of new listings is matched against your criteria the instant it lands in the MLS.</p>
+          </article>
+          <article class="step glass">
+            <div class="step-number">03</div>
+            <h3>You strike first</h3>
+            <p>Get an email with full details and photos before competing buyers even know the listing exists.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="pricing" id="pricing">
+        <div class="section-head">
+          <p class="kicker">Pricing</p>
+          <h2>Simple, transparent, ruthless.</h2>
+        </div>
+
+        <div class="plans">
+          <article class="plan glass">
+            <p class="plan-name">Starter</p>
+            <p class="plan-desc">For buyers actively house-hunting.</p>
+            <div class="plan-price"><span class="plan-price-amount">$15</span><span class="plan-price-unit">one-time</span></div>
+            <ul class="plan-features">
+              <li><span class="check">✓</span> 30 days of live alerts</li>
+              <li><span class="check">✓</span> Up to 3 saved searches</li>
+              <li><span class="check">✓</span> Instant email notifications</li>
+              <li><span class="check">✓</span> AI natural-language search</li>
+            </ul>
+            <button class="btn-secondary btn-block">Get Starter</button>
+          </article>
+
+          <article class="plan plan-featured glass">
+            <span class="plan-badge">Most Popular</span>
+            <p class="plan-name">Pro</p>
+            <p class="plan-desc">For realtors and serious investors.</p>
+            <div class="plan-price"><span class="plan-price-amount">$49</span><span class="plan-price-unit">/month</span></div>
+            <ul class="plan-features">
+              <li><span class="check">✓</span> Unlimited saved searches</li>
+              <li><span class="check">✓</span> Multi-buyer client profiles</li>
+              <li><span class="check">✓</span> Priority sub-minute alerts</li>
+              <li><span class="check">✓</span> White-label client emails</li>
+              <li><span class="check">✓</span> Dedicated support channel</li>
+            </ul>
+            <button class="btn-primary btn-block"><span class="btn-label">Start Pro</span><span class="btn-shine" aria-hidden="true"></span></button>
           </article>
         </div>
       </section>
     </main>
 
-    <footer class="site-footer">
-      <p class="footer-tagline">Never miss your perfect home again.</p>
-      <p class="footer-copy">Copyright © 2026 ListAlert. All rights reserved.</p>
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="brand-mark"></span>
+          <span class="brand-name">ListAlert</span>
+        </div>
+        <p class="footer-tag">Real estate moves at the speed of attention. Be the first to look.</p>
+        <p class="footer-copy">© 2026 ListAlert · All rights reserved</p>
+      </div>
     </footer>
 
     <script src="./app.js"></script>

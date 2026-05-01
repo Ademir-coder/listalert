@@ -3,29 +3,75 @@ let currentCriteria = null;
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const aiQuery = document.getElementById("aiQuery");
-const aiBtn = document.getElementById("ai-search-btn");
-const resultsSection = document.getElementById("results");
-const statusEl = document.getElementById("status");
-const alertBadge = document.getElementById("alert-badge");
+const aiBtn = document.getElementById("aiBtn");
 
-// Manual form refs
-const cityInput = document.getElementById("city");
-const propertyTypeInput = document.getElementById("propertyType");
-const minPriceInput = document.getElementById("minPrice");
-const maxPriceInput = document.getElementById("maxPrice");
-const bedroomsInput = document.getElementById("bedrooms");
-const maxAgeInput = document.getElementById("maxAge");
-const searchForm = document.getElementById("search-form");
-const saveAlertBtn = document.getElementById("save-alert-btn");
-const alertEmailInput = document.getElementById("alertEmail");
+const alertForm = document.getElementById("alertForm");
+const alertCity = document.getElementById("alertCity");
+const alertType = document.getElementById("alertType");
+const alertMinPrice = document.getElementById("alertMinPrice");
+const alertMaxPrice = document.getElementById("alertMaxPrice");
+const alertBeds = document.getElementById("alertBeds");
+const alertEmail = document.getElementById("alertEmail");
+
+const resultsSection = document.getElementById("results-section");
+const results = document.getElementById("results");
+const resultsTitle = document.getElementById("resultsTitle");
+const resultsSub = document.getElementById("resultsSub");
+const statusEl = document.getElementById("status");
+
+// ─── Tab switcher ─────────────────────────────────────────────────────────────
+const tabs = document.querySelectorAll(".tab");
+const panels = document.querySelectorAll(".tab-panel");
+const tabIndicator = document.querySelector(".tab-indicator");
+
+function activateTab(target) {
+  tabs.forEach((t) => {
+    const isActive = t.dataset.tab === target;
+    t.classList.toggle("is-active", isActive);
+    t.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+  panels.forEach((p) => p.classList.toggle("is-active", p.dataset.panel === target));
+  positionIndicator();
+}
+
+function positionIndicator() {
+  const active = document.querySelector(".tab.is-active");
+  if (!active || !tabIndicator) return;
+  tabIndicator.style.width = `${active.offsetWidth}px`;
+  tabIndicator.style.transform = `translateX(${active.offsetLeft - 4}px)`;
+}
+
+tabs.forEach((tab) => tab.addEventListener("click", () => activateTab(tab.dataset.tab)));
+window.addEventListener("load", positionIndicator);
+window.addEventListener("resize", positionIndicator);
+
+// ─── Suggestion chips ────────────────────────────────────────────────────────
+document.querySelectorAll(".chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    aiQuery.value = chip.dataset.q || chip.textContent;
+    aiQuery.focus();
+    runAiSearch();
+  });
+});
 
 // ─── AI Search ────────────────────────────────────────────────────────────────
-aiBtn.addEventListener("click", async () => {
+aiBtn.addEventListener("click", runAiSearch);
+aiQuery.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    runAiSearch();
+  }
+});
+
+async function runAiSearch() {
   const query = aiQuery.value.trim();
   if (!query) return showStatus("Please enter a search query.", "error");
 
-  setLoading(true, "🤖 AI is searching for properties...");
-  clearResults();
+  showResults();
+  resultsTitle.textContent = "Searching…";
+  resultsSub.textContent = `"${query}"`;
+  setLoading(true, "AI is parsing your query and fetching live listings…");
+  clearResultsGrid();
 
   try {
     const res = await fetch("/ai-search", {
@@ -38,58 +84,35 @@ aiBtn.addEventListener("click", async () => {
     if (!res.ok) throw new Error(data.error || "Search failed.");
 
     currentCriteria = data.criteria;
-
-    // Populate filter form to reflect what AI understood
-    fillForm(data.criteria);
-
-    // Show listings
-    renderListings(data.listings, data.criteria);
+    renderListings(data.listings, data.criteria, query);
   } catch (err) {
-    showStatus("❌ " + err.message, "error");
+    showStatus("Error: " + err.message, "error");
+    resultsTitle.textContent = "Couldn't run search";
   } finally {
     setLoading(false);
   }
-});
+}
 
-// Allow pressing Enter in AI search box
-aiQuery.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") aiBtn.click();
-});
-
-// ─── Manual Search ────────────────────────────────────────────────────────────
-searchForm.addEventListener("submit", async (e) => {
+// ─── Realtor Alert form ──────────────────────────────────────────────────────
+alertForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const criteria = getCriteriaFromForm();
-  currentCriteria = criteria;
+  const email = alertEmail.value.trim();
+  if (!email) return flashField(alertEmail);
 
-  setLoading(true, "Searching listings...");
-  clearResults();
+  const criteria = {
+    city: alertCity.value.trim() || null,
+    propertyType: alertType.value || null,
+    minPrice: alertMinPrice.value ? Number(alertMinPrice.value) : null,
+    maxPrice: alertMaxPrice.value ? Number(alertMaxPrice.value) : null,
+    bedrooms: alertBeds.value ? Number(alertBeds.value) : null,
+    maxAge: null,
+  };
 
-  try {
-    const res = await fetch("/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ criteria }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Search failed.");
-
-    renderListings(data.listings, criteria);
-  } catch (err) {
-    showStatus("❌ " + err.message, "error");
-  } finally {
-    setLoading(false);
-  }
-});
-
-// ─── Save Alert ───────────────────────────────────────────────────────────────
-saveAlertBtn.addEventListener("click", async () => {
-  const email = alertEmailInput.value.trim();
-  if (!email) return showStatus("Please enter an email address.", "error");
-
-  const criteria = currentCriteria || getCriteriaFromForm();
+  const submitBtn = alertForm.querySelector("button[type=submit]");
+  const originalLabel = submitBtn.querySelector(".btn-label").innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.querySelector(".btn-label").textContent = "Activating…";
 
   try {
     const res = await fetch("/save-alert", {
@@ -101,35 +124,76 @@ saveAlertBtn.addEventListener("click", async () => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed to save alert.");
 
-    showStatus("✅ Alert saved! You'll get notified when new listings match.", "success");
+    submitBtn.querySelector(".btn-label").textContent = "Alert active ✓";
+    setTimeout(() => {
+      submitBtn.disabled = false;
+      submitBtn.querySelector(".btn-label").innerHTML = originalLabel;
+    }, 2400);
+
+    try { localStorage.setItem("listalert_criteria", JSON.stringify(criteria)); } catch {}
   } catch (err) {
-    showStatus("❌ " + err.message, "error");
+    submitBtn.querySelector(".btn-label").textContent = "Try again";
+    setTimeout(() => {
+      submitBtn.disabled = false;
+      submitBtn.querySelector(".btn-label").innerHTML = originalLabel;
+    }, 2400);
   }
 });
 
-// ─── Render Listings ──────────────────────────────────────────────────────────
-function renderListings(listings, criteria) {
-  clearResults();
+function flashField(el) {
+  el.style.transition = "border-color 200ms ease, box-shadow 200ms ease";
+  el.style.borderColor = "#f87171";
+  el.style.boxShadow = "0 0 0 3px rgba(248, 113, 113, 0.15)";
+  el.focus();
+  setTimeout(() => {
+    el.style.borderColor = "";
+    el.style.boxShadow = "";
+  }, 1400);
+}
+
+// ─── Render listings ─────────────────────────────────────────────────────────
+function renderListings(listings, criteria, query) {
+  clearResultsGrid();
 
   if (!listings || listings.length === 0) {
-    showStatus("No properties found. Try a different search.", "info");
+    resultsTitle.textContent = "No matches found";
+    resultsSub.textContent = query ? `"${query}"` : "";
+    showStatus("Try widening your criteria — different city, broader price range, or fewer beds.", "info");
     return;
   }
 
-  showStatus(`Found ${listings.length} propert${listings.length === 1 ? "y" : "ies"}`, "success");
+  resultsTitle.textContent = `${listings.length} ${listings.length === 1 ? "property" : "properties"} found`;
+  resultsSub.textContent = buildCriteriaSummary(criteria, query);
+  showStatus("", "info");
 
-  const grid = document.createElement("div");
-  grid.className = "listings-grid";
-
-  listings.forEach((listing) => {
+  listings.forEach((listing, i) => {
     const card = buildListingCard(listing);
-    grid.appendChild(card);
+    card.style.animationDelay = `${Math.min(i * 60, 600)}ms`;
+    results.appendChild(card);
   });
 
-  resultsSection.appendChild(grid);
-
-  // Smooth scroll to results
   resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function buildCriteriaSummary(criteria, query) {
+  if (!criteria) return query || "";
+  const parts = [];
+  if (criteria.city) parts.push(criteria.city);
+  if (criteria.propertyType) parts.push(criteria.propertyType);
+  if (criteria.bedrooms) parts.push(`${criteria.bedrooms}+ bed`);
+  if (criteria.minPrice || criteria.maxPrice) {
+    const lo = criteria.minPrice ? formatCompactPrice(criteria.minPrice) : "any";
+    const hi = criteria.maxPrice ? formatCompactPrice(criteria.maxPrice) : "any";
+    parts.push(`${lo} – ${hi}`);
+  }
+  return parts.join(" · ");
+}
+
+function formatCompactPrice(value) {
+  if (typeof value !== "number") return "";
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(value % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (value >= 1_000) return `$${Math.round(value / 1_000)}k`;
+  return `$${value}`;
 }
 
 function buildListingCard(listing) {
@@ -141,62 +205,49 @@ function buildListingCard(listing) {
   const baths = listing.property?.bathsFull ?? listing.property?.bathrooms ?? null;
   const sqft = listing.property?.area ?? null;
   const yearBuilt = listing.property?.yearBuilt ?? null;
-  const propertyType = listing.property?.type || listing.property?.subType || "";
   const photos = listing.photos || [];
   const photo = photos[0] || null;
   const mlsId = listing.mlsId || listing.listingId || "";
+
+  const placeholderSvg = `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
 
   const card = document.createElement("article");
   card.className = "listing-card";
 
   card.innerHTML = `
     <div class="listing-photo">
-      ${photo
-        ? `<img src="${escapeHtml(photo)}" alt="Property at ${escapeHtml(address)}" loading="lazy" onerror="this.parentElement.classList.add('no-photo')" />`
-        : `<div class="no-photo-placeholder"><span>🏠</span></div>`
-      }
+      <div class="no-photo-placeholder">${placeholderSvg}</div>
       ${price !== "N/A" ? `<div class="listing-price-badge">${escapeHtml(price)}</div>` : ""}
     </div>
     <div class="listing-body">
       <div class="listing-address">${escapeHtml(address)}</div>
-      ${city || state ? `<div class="listing-location">${escapeHtml([city, state].filter(Boolean).join(", "))}</div>` : ""}
+      ${(city || state) ? `<div class="listing-location">${escapeHtml([city, state].filter(Boolean).join(", "))}</div>` : ""}
       <div class="listing-stats">
-        ${beds !== null ? `<span class="stat"><strong>${beds}</strong> bed${beds !== 1 ? "s" : ""}</span>` : ""}
-        ${baths !== null ? `<span class="stat"><strong>${baths}</strong> bath${baths !== 1 ? "s" : ""}</span>` : ""}
-        ${sqft !== null ? `<span class="stat"><strong>${Number(sqft).toLocaleString()}</strong> sqft</span>` : ""}
+        <span class="stat"><strong>${beds ?? "—"}</strong>${beds === 1 ? "Bed" : "Beds"}</span>
+        <span class="stat"><strong>${baths ?? "—"}</strong>${baths === 1 ? "Bath" : "Baths"}</span>
+        <span class="stat"><strong>${sqft ? Number(sqft).toLocaleString() : "—"}</strong>Sqft</span>
       </div>
       <div class="listing-meta">
         ${yearBuilt ? `<span>Built ${yearBuilt}</span>` : ""}
-        ${propertyType ? `<span>${escapeHtml(propertyType)}</span>` : ""}
         ${mlsId ? `<span class="mls-id">MLS# ${escapeHtml(String(mlsId))}</span>` : ""}
       </div>
     </div>
   `;
 
+  if (photo) {
+    const img = document.createElement("img");
+    img.src = photo;
+    img.alt = `Property at ${address}`;
+    img.loading = "lazy";
+    img.addEventListener("error", () => img.remove());
+    const photoEl = card.querySelector(".listing-photo");
+    photoEl.insertBefore(img, photoEl.firstChild);
+  }
+
   return card;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function getCriteriaFromForm() {
-  return {
-    city: cityInput.value.trim() || null,
-    propertyType: propertyTypeInput.value || null,
-    minPrice: minPriceInput.value ? Number(minPriceInput.value) : null,
-    maxPrice: maxPriceInput.value ? Number(maxPriceInput.value) : null,
-    bedrooms: bedroomsInput.value ? Number(bedroomsInput.value) : null,
-    maxAge: maxAgeInput.value ? Number(maxAgeInput.value) : null,
-  };
-}
-
-function fillForm(criteria) {
-  if (criteria.city) cityInput.value = criteria.city;
-  if (criteria.propertyType) propertyTypeInput.value = criteria.propertyType;
-  if (criteria.minPrice) minPriceInput.value = criteria.minPrice;
-  if (criteria.maxPrice) maxPriceInput.value = criteria.maxPrice;
-  if (criteria.bedrooms) bedroomsInput.value = criteria.bedrooms;
-  if (criteria.maxAge) maxAgeInput.value = criteria.maxAge;
-}
-
 function formatPrice(value) {
   if (typeof value !== "number") return "N/A";
   return new Intl.NumberFormat("en-US", {
@@ -216,37 +267,41 @@ function escapeHtml(value) {
 }
 
 function showStatus(message, type = "info") {
-  statusEl.textContent = message;
+  if (!message) {
+    statusEl.textContent = "";
+    statusEl.className = "status";
+    return;
+  }
   statusEl.className = `status status-${type}`;
+  statusEl.textContent = message;
 }
 
-function clearResults() {
-  resultsSection.innerHTML = "";
-  statusEl.textContent = "";
-  statusEl.className = "status";
+function showResults() {
+  resultsSection.hidden = false;
+}
+
+function clearResultsGrid() {
+  results.innerHTML = "";
 }
 
 function setLoading(loading, message = "") {
   aiBtn.disabled = loading;
-  document.getElementById("search-btn").disabled = loading;
-  if (loading && message) showStatus(message, "info");
+  if (loading && message) {
+    statusEl.className = "status status-loading";
+    statusEl.innerHTML = `<span class="spinner" aria-hidden="true"></span><span>${escapeHtml(message)}</span>`;
+  }
 }
 
-// ─── Load saved alert on page load ───────────────────────────────────────────
+// ─── Restore saved alert criteria ────────────────────────────────────────────
 (function loadSavedAlert() {
-  const saved = localStorage.getItem("listalert_criteria");
-  if (!saved) return;
   try {
-    const criteria = JSON.parse(saved);
-    fillForm(criteria);
-    currentCriteria = criteria;
-    alertBadge.textContent = "Loaded saved alert. Auto-check is running every 30 seconds.";
-    alertBadge.classList.remove("hidden");
+    const saved = localStorage.getItem("listalert_criteria");
+    if (!saved) return;
+    const c = JSON.parse(saved);
+    if (c.city) alertCity.value = c.city;
+    if (c.propertyType) alertType.value = c.propertyType;
+    if (c.minPrice) alertMinPrice.value = c.minPrice;
+    if (c.maxPrice) alertMaxPrice.value = c.maxPrice;
+    if (c.bedrooms) alertBeds.value = c.bedrooms;
   } catch {}
 })();
-
-saveAlertBtn.addEventListener("click", () => {
-  if (currentCriteria) {
-    localStorage.setItem("listalert_criteria", JSON.stringify(currentCriteria));
-  }
-}, true);
