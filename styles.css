@@ -533,3 +533,126 @@ body {
     grid-template-columns: 1fr;
   }
 }
+/* ─── Listings Grid ─────────────────────────────────────────────────────────── */
+.listings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.listing-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.listing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.listing-photo {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+
+.listing-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.listing-photo.no-photo,
+.no-photo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #e0e7ff 0%, #f0fdf4 100%);
+  height: 100%;
+}
+
+.no-photo-placeholder span {
+  font-size: 48px;
+}
+
+.listing-price-badge {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: #1e1b4b;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  letter-spacing: 0.01em;
+}
+
+.listing-body {
+  padding: 16px 20px 20px;
+}
+
+.listing-address {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.listing-location {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.listing-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.listing-stats .stat {
+  font-size: 14px;
+  color: #334155;
+}
+
+.listing-stats .stat strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.listing-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #94a3b8;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.mls-id {
+  margin-left: auto;
+}
+
+/* ─── Status messages ────────────────────────────────────────────────────────── */
+.status {
+  text-align: center;
+  font-size: 15px;
+  margin: 16px 0;
+  min-height: 24px;
+}
+
+.status-success { color: #16a34a; }
+.status-error   { color: #dc2626; }
+.status-info    { color: #2563eb; }
