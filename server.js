@@ -27,19 +27,50 @@ app.use(express.json());
 app.use(cors({ origin: "*" }));
 app.use(express.static(BASE_DIR));
 
+// ─── AI SEARCH: parse + fetch listings in one shot ───────────────────────────
+app.post("/ai-search", async (req, res) => {
+  try {
+    const query = String(req.body?.query || "").trim();
+    if (!query) return res.status(400).json({ error: "Query is required." });
+
+    // 1. Ask Claude to parse the query
+    const criteria = await parseNaturalQueryWithClaude(query);
+
+    // 2. Fetch real listings from SimplyRETS
+    const listings = await fetchSimplyRetsListings(criteria);
+
+    // 3. Return both so the frontend can show results immediately
+    return res.json({ success: true, criteria, listings });
+  } catch (error) {
+    console.error("AI search error:", error);
+    return res.status(500).json({ error: error.message || "AI search failed." });
+  }
+});
+
+// ─── MANUAL SEARCH: fetch listings by criteria directly ──────────────────────
+app.post("/search", async (req, res) => {
+  try {
+    const criteria = req.body?.criteria;
+    if (!criteria) return res.status(400).json({ error: "Criteria is required." });
+    const listings = await fetchSimplyRetsListings(criteria);
+    return res.json({ success: true, listings });
+  } catch (error) {
+    console.error("Search error:", error);
+    return res.status(500).json({ error: "Search failed." });
+  }
+});
+
+// ─── SAVE ALERT ───────────────────────────────────────────────────────────────
 app.post("/save-alert", async (req, res) => {
   try {
     const { email, criteria } = req.body ?? {};
     if (!isValidEmail(email) || !isValidCriteria(criteria)) {
-      return res
-        .status(400)
-        .json({ error: "Invalid payload. Send { email, criteria } with valid values." });
+      return res.status(400).json({ error: "Invalid payload." });
     }
 
     const alerts = await readJsonFile(ALERTS_FILE, []);
     const id = buildAlertId(email, criteria);
-
-    const existingIndex = alerts.findIndex((alert) => alert.id === id);
+    const existingIndex = alerts.findIndex((a) => a.id === id);
     const payload = { id, email, criteria, updatedAt: new Date().toISOString() };
 
     if (existingIndex >= 0) {
@@ -67,21 +98,6 @@ app.post("/check-alerts", async (_req, res) => {
   }
 });
 
-app.post("/parse-natural-search", async (req, res) => {
-  try {
-    const query = String(req.body?.query || "").trim();
-    if (!query) {
-      return res.status(400).json({ error: "Query is required." });
-    }
-
-    const criteria = await parseNaturalQueryWithClaude(query);
-    return res.json({ success: true, criteria });
-  } catch (error) {
-    console.error("Failed to parse natural search query:", error);
-    return res.status(500).json({ error: "Failed to parse natural language search query." });
-  }
-});
-
 app.listen(PORT, () => {
   console.log(`ListAlert server running at http://localhost:${PORT}`);
 });
@@ -89,18 +105,17 @@ app.listen(PORT, () => {
 setInterval(async () => {
   if (isScheduledCheckRunning) return;
   isScheduledCheckRunning = true;
-
   try {
     const summary = await runAlertCheckCycle();
-    console.log(
-      `Scheduled alert check complete. Checked: ${summary.alertsChecked}, emails sent: ${summary.emailsSent}`
-    );
+    console.log(`Scheduled check done. Checked: ${summary.alertsChecked}, emails: ${summary.emailsSent}`);
   } catch (error) {
-    console.error("Scheduled alert check failed:", error);
+    console.error("Scheduled check failed:", error);
   } finally {
     isScheduledCheckRunning = false;
   }
 }, ALERT_CHECK_INTERVAL_MS);
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 function buildAlertId(email, criteria) {
   const raw = JSON.stringify({ email: email.toLowerCase(), criteria });
@@ -113,8 +128,7 @@ function isValidEmail(email) {
 }
 
 function isValidCriteria(criteria) {
-  if (!criteria || typeof criteria !== "object") return false;
-  return true;
+  return criteria && typeof criteria === "object";
 }
 
 function buildSimplyRetsQuery(criteria) {
@@ -124,168 +138,135 @@ function buildSimplyRetsQuery(criteria) {
   if (criteria.minPrice) params.append("minprice", String(criteria.minPrice));
   if (criteria.maxPrice) params.append("maxprice", String(criteria.maxPrice));
   if (criteria.bedrooms) params.append("bedrooms", String(criteria.bedrooms));
-
   if (criteria.maxAge) {
-    const currentYear = new Date().getFullYear();
-    const minYear = currentYear - Number(criteria.maxAge);
+    const minYear = new Date().getFullYear() - Number(criteria.maxAge);
     if (!Number.isNaN(minYear)) params.append("minyear", String(minYear));
   }
-
+  params.append("limit", "20");
   return params.toString();
 }
 
 async function fetchSimplyRetsListings(criteria) {
   const query = buildSimplyRetsQuery(criteria);
-  const requestUrl = query ? `${SIMPLYRETS_API_URL}?${query}` : SIMPLYRETS_API_URL;
+  const url = query ? `${SIMPLYRETS_API_URL}?${query}` : `${SIMPLYRETS_API_URL}?limit=20`;
   const token = Buffer.from(`${SIMPLYRETS_USERNAME}:${SIMPLYRETS_PASSWORD}`).toString("base64");
 
-  const response = await fetch(requestUrl, {
+  const response = await fetch(url, {
     headers: { Authorization: `Basic ${token}` },
   });
 
-  if (!response.ok) {
-    throw new Error(`SimplyRETS request failed: ${response.status}`);
-  }
-
+  if (!response.ok) throw new Error(`SimplyRETS request failed: ${response.status}`);
   const data = await response.json();
   return Array.isArray(data) ? data : [];
 }
 
 function getListingId(listing) {
-  return String(
-    listing.mlsId || listing.listingId || listing.id || listing.address?.full || ""
-  );
+  return String(listing.mlsId || listing.listingId || listing.id || listing.address?.full || "");
 }
 
-async function sendAlertEmail(to, criteria, listings) {
-  const html = buildAlertEmailHtml(criteria, listings);
-  const text = buildAlertEmailText(listings);
+async function parseNaturalQueryWithClaude(query) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
 
-  const response = await fetch(RESEND_API_URL, {
+  const currentYear = new Date().getFullYear();
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
       "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      from: EMAIL_FROM,
-      to,
-      subject: "New Listing Match Found!",
-      html,
-      text,
+      model: "claude-sonnet-4-5",
+      max_tokens: 300,
+      system: "You convert real-estate search text into JSON. Respond with ONLY valid JSON, no markdown, no explanation.",
+      messages: [{
+        role: "user",
+        content: `Parse this property search into JSON with these keys:
+{
+  "city": string or null,
+  "propertyType": "house" | "apartment" | null,
+  "minPrice": number or null,
+  "maxPrice": number or null,
+  "bedrooms": number or null,
+  "maxAge": number or null
+}
+Rules:
+- Normalize price: 350k -> 350000, 1.2m -> 1200000
+- "built after YEAR" -> maxAge = ${currentYear} - YEAR
+- If unknown, use null
+
+Input: ${query}`
+      }],
     }),
   });
 
   if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Resend failed (${response.status}): ${errorBody}`);
+    const err = await response.text();
+    throw new Error(`Claude API failed (${response.status}): ${err}`);
   }
-}
 
-async function sendAlertConfirmationEmail(to, criteria) {
-  const city = criteria?.city ? String(criteria.city).trim() : "your selected city";
-  const safeCity = city || "your selected city";
-  const message = `Hi! Your listing alert has been saved. We will notify you the moment a matching property drops in ${safeCity} matching your criteria. The ListAlert Team.`;
+  const payload = await response.json();
+  const text = payload?.content?.[0]?.text;
+  if (!text) throw new Error("Empty Claude response.");
 
-  const response = await fetch(RESEND_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: EMAIL_FROM,
-      to,
-      subject: "Your ListAlert is active!",
-      html: `
-      <div style="font-family:Inter,Arial,sans-serif;background:#f8fafc;padding:24px;">
-        <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:22px;">
-          <h2 style="margin:0 0 10px;color:#1e1b4b;">Your ListAlert is active!</h2>
-          <p style="margin:0;color:#334155;font-size:15px;line-height:1.6;">
-            Hi! Your listing alert has been saved. We will notify you the moment a matching property drops in <strong>${escapeHtml(safeCity)}</strong> matching your criteria. The ListAlert Team.
-          </p>
-        </div>
-      </div>`,
-      text: message,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Resend confirmation failed (${response.status}): ${errorBody}`);
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    const s = text.indexOf("{");
+    const e = text.lastIndexOf("}");
+    if (s === -1 || e === -1) throw new Error("Claude did not return valid JSON.");
+    parsed = JSON.parse(text.slice(s, e + 1));
   }
+
+  return sanitizeParsedCriteria(parsed, currentYear);
 }
 
-function buildAlertEmailHtml(criteria, listings) {
-  const criteriaSummary = [
-    criteria.city ? `City: ${escapeHtml(criteria.city)}` : null,
-    criteria.propertyType ? `Type: ${escapeHtml(criteria.propertyType)}` : null,
-    criteria.minPrice ? `Min: $${escapeHtml(String(criteria.minPrice))}` : null,
-    criteria.maxPrice ? `Max: $${escapeHtml(String(criteria.maxPrice))}` : null,
-    criteria.bedrooms ? `Beds: ${escapeHtml(String(criteria.bedrooms))}` : null,
-  ]
-    .filter(Boolean)
-    .join(" | ");
-
-  const rows = listings
-    .slice(0, 10)
-    .map((listing) => {
-      const address = listing.address?.full || "Address unavailable";
-      const price = formatPrice(listing.listPrice);
-      const beds = listing.property?.bedrooms ?? "N/A";
-      const baths = listing.property?.bathsFull ?? listing.property?.bathrooms ?? "N/A";
-      const yearBuilt = listing.property?.yearBuilt ?? "N/A";
-
-      return `
-      <tr>
-        <td style="padding:12px 0;border-bottom:1px solid #e2e8f0;">
-          <div style="font-weight:600;color:#0f172a;">${escapeHtml(address)}</div>
-          <div style="color:#475569;font-size:14px;margin-top:4px;">
-            Price: ${escapeHtml(price)} | Bedrooms: ${escapeHtml(String(beds))} | Bathrooms: ${escapeHtml(String(baths))} | Year Built: ${escapeHtml(String(yearBuilt))}
-          </div>
-        </td>
-      </tr>`;
-    })
-    .join("");
-
-  return `
-  <div style="font-family:Inter,Arial,sans-serif;background:#f8fafc;padding:24px;">
-    <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:22px;">
-      <h2 style="margin:0 0 10px;color:#1e1b4b;">ListAlert</h2>
-      <p style="margin:0 0 14px;color:#334155;font-size:15px;">
-        A new listing matching your criteria just dropped.
-      </p>
-      <p style="margin:0 0 18px;color:#64748b;font-size:13px;">${criteriaSummary}</p>
-      <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
-        ${rows}
-      </table>
-    </div>
-  </div>`;
+function sanitizeParsedCriteria(criteria, currentYear) {
+  return {
+    city: normalizeOptionalString(criteria?.city),
+    propertyType: normalizePropertyType(criteria?.propertyType),
+    minPrice: normalizeOptionalNumber(criteria?.minPrice),
+    maxPrice: normalizeOptionalNumber(criteria?.maxPrice),
+    bedrooms: normalizeOptionalNumber(criteria?.bedrooms),
+    maxAge: normalizeOptionalNumber(criteria?.maxAge),
+  };
 }
 
-function buildAlertEmailText(listings) {
-  const rows = listings
-    .slice(0, 10)
-    .map((listing) => {
-      const address = listing.address?.full || "Address unavailable";
-      const price = formatPrice(listing.listPrice);
-      const beds = listing.property?.bedrooms ?? "N/A";
-      const baths = listing.property?.bathsFull ?? listing.property?.bathrooms ?? "N/A";
-      const yearBuilt = listing.property?.yearBuilt ?? "N/A";
-      return `${address} | Price: ${price} | Bedrooms: ${beds} | Bathrooms: ${baths} | Year Built: ${yearBuilt}`;
-    })
-    .join("\n");
+function normalizeOptionalString(value) {
+  if (value == null) return null;
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
+}
 
-  return `A new listing matching your criteria just dropped.\n\n${rows}`;
+function normalizePropertyType(value) {
+  if (value == null) return null;
+  const text = String(value).toLowerCase().trim();
+  if (text.includes("house")) return "house";
+  if (text.includes("apartment") || text.includes("apt")) return "apartment";
+  return null;
+}
+
+function normalizeOptionalNumber(value) {
+  if (value == null || value === "") return null;
+  const num = Number(value);
+  if (Number.isNaN(num) || num < 0) return null;
+  return Math.round(num);
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function formatPrice(value) {
   if (typeof value !== "number") return "N/A";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 }
 
 async function readJsonFile(filePath, fallback) {
@@ -309,152 +290,51 @@ async function runAlertCheckCycle() {
   let alertsChecked = 0;
 
   for (const alert of alerts) {
-    alertsChecked += 1;
+    alertsChecked++;
     const listings = await fetchSimplyRetsListings(alert.criteria);
     const currentIds = new Set(listings.map(getListingId).filter(Boolean));
     const previousIds = new Set(seenMap[alert.id] || []);
-
-    const newMatches = listings.filter((listing) => {
-      const id = getListingId(listing);
-      return id && !previousIds.has(id);
-    });
-
-    const matchesToEmail = FORCE_SEND_TEST_EMAILS ? listings : newMatches;
-
-    if (matchesToEmail.length > 0) {
-      await sendAlertEmail(alert.email, alert.criteria, matchesToEmail);
-      emailsSent += 1;
-    }
-
+    const newMatches = listings.filter((l) => { const id = getListingId(l); return id && !previousIds.has(id); });
+    const toEmail = FORCE_SEND_TEST_EMAILS ? listings : newMatches;
+    if (toEmail.length > 0) { await sendAlertEmail(alert.email, alert.criteria, toEmail); emailsSent++; }
     seenMap[alert.id] = [...currentIds];
   }
 
   await writeJsonFile(SEEN_LISTINGS_FILE, seenMap);
-
-  return {
-    alertsChecked,
-    emailsSent,
-  };
+  return { alertsChecked, emailsSent };
 }
 
-async function parseNaturalQueryWithClaude(query) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not configured on the server.");
-  }
+async function sendAlertEmail(to, criteria, listings) {
+  const rows = listings.slice(0, 10).map((l) => {
+    const address = l.address?.full || "Address unavailable";
+    const price = formatPrice(l.listPrice);
+    const beds = l.property?.bedrooms ?? "N/A";
+    const baths = l.property?.bathsFull ?? l.property?.bathrooms ?? "N/A";
+    return `<tr><td style="padding:12px 0;border-bottom:1px solid #e2e8f0;"><div style="font-weight:600;">${escapeHtml(address)}</div><div style="color:#475569;font-size:14px;">${escapeHtml(price)} | ${escapeHtml(String(beds))} bed | ${escapeHtml(String(baths))} bath</div></td></tr>`;
+  }).join("");
 
-  const currentYear = new Date().getFullYear();
-  const systemPrompt =
-    "You convert real-estate search text into JSON. Respond with ONLY valid JSON, no markdown.";
-  const userPrompt = `
-Parse this property search request into JSON with keys:
-{
-  "city": string or null,
-  "propertyType": "house" | "apartment" | null,
-  "minPrice": number or null,
-  "maxPrice": number or null,
-  "bedrooms": number or null,
-  "maxAge": number or null
-}
-
-Rules:
-- If location looks like state/region (e.g. Arizona), put it in "city" anyway.
-- If user says "built after YEAR", convert to maxAge based on current year ${currentYear}.
-- Normalize price values like 350k -> 350000.
-- If unknown, use null.
-
-Input: ${query}
-`;
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  await fetch(RESEND_API_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
-      max_tokens: 300,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
+      from: EMAIL_FROM, to,
+      subject: "New Listing Match Found!",
+      html: `<div style="font-family:Arial,sans-serif;padding:24px;"><h2>New listings matching your criteria:</h2><table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">${rows}</table></div>`,
+      text: listings.slice(0, 10).map((l) => `${l.address?.full || "?"} | ${formatPrice(l.listPrice)}`).join("\n"),
     }),
   });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Claude API failed (${response.status}): ${errorBody}`);
-  }
-
-  const payload = await response.json();
-  const contentText = payload?.content?.[0]?.text;
-  if (!contentText) {
-    throw new Error("Claude response did not contain text content.");
-  }
-
-  let parsed;
-  try {
-    parsed = JSON.parse(contentText);
-  } catch {
-    // Fallback in case Claude wraps JSON in extra text.
-    const jsonStart = contentText.indexOf("{");
-    const jsonEnd = contentText.lastIndexOf("}");
-    if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
-      throw new Error("Claude response was not valid JSON.");
-    }
-    parsed = JSON.parse(contentText.slice(jsonStart, jsonEnd + 1));
-  }
-
-  return sanitizeParsedCriteria(parsed, currentYear);
 }
 
-function sanitizeParsedCriteria(criteria, currentYear) {
-  const normalized = {
-    city: normalizeOptionalString(criteria?.city),
-    propertyType: normalizePropertyType(criteria?.propertyType),
-    minPrice: normalizeOptionalNumber(criteria?.minPrice),
-    maxPrice: normalizeOptionalNumber(criteria?.maxPrice),
-    bedrooms: normalizeOptionalNumber(criteria?.bedrooms),
-    maxAge: normalizeOptionalNumber(criteria?.maxAge),
-  };
-
-  if (criteria?.yearBuiltAfter && normalized.maxAge === null) {
-    const year = Number(criteria.yearBuiltAfter);
-    if (!Number.isNaN(year) && year > 1800 && year <= currentYear) {
-      normalized.maxAge = currentYear - year;
-    }
-  }
-
-  return normalized;
-}
-
-function normalizeOptionalString(value) {
-  if (value === null || value === undefined) return null;
-  const text = String(value).trim();
-  return text.length > 0 ? text : null;
-}
-
-function normalizePropertyType(value) {
-  if (value === null || value === undefined) return null;
-  const text = String(value).toLowerCase().trim();
-  if (text.includes("house")) return "house";
-  if (text.includes("apartment") || text.includes("apt")) return "apartment";
-  return null;
-}
-
-function normalizeOptionalNumber(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const num = Number(value);
-  if (Number.isNaN(num)) return null;
-  if (num < 0) return null;
-  return Math.round(num);
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+async function sendAlertConfirmationEmail(to, criteria) {
+  const city = criteria?.city || "your selected area";
+  await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: EMAIL_FROM, to,
+      subject: "Your ListAlert is active!",
+      html: `<div style="font-family:Arial,sans-serif;padding:24px;"><h2>Your ListAlert is active!</h2><p>We'll notify you the moment a matching property drops in <strong>${escapeHtml(city)}</strong>.</p></div>`,
+      text: `Your alert is active! We'll notify you about new listings in ${city}.`,
+    }),
+  });
 }
