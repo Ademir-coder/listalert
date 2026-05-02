@@ -1,5 +1,37 @@
 // ─── State ────────────────────────────────────────────────────────────────────
 let currentCriteria = null;
+let billingPeriod = "monthly";
+
+// ─── Billing toggle ───────────────────────────────────────────────────────────
+document.querySelectorAll(".billing-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    billingPeriod = btn.dataset.billing;
+    document.querySelectorAll(".billing-btn").forEach((b) => {
+      b.classList.toggle("is-active", b.dataset.billing === billingPeriod);
+    });
+
+    const isAnnual = billingPeriod === "annual";
+
+    // Swap price amounts
+    document.querySelectorAll(".plan-price-amount[data-monthly]").forEach((el) => {
+      el.style.opacity = "0";
+      setTimeout(() => {
+        el.textContent = isAnnual ? el.dataset.annual : el.dataset.monthly;
+        el.style.opacity = "1";
+      }, 120);
+    });
+
+    // Swap CTA labels
+    document.querySelectorAll(".btn-label[data-monthly]").forEach((el) => {
+      el.textContent = isAnnual ? el.dataset.annual : el.dataset.monthly;
+    });
+
+    // Show/hide annual billing note
+    document.querySelectorAll(".plan-annual-billed").forEach((el) => {
+      el.hidden = !isAnnual;
+    });
+  });
+});
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const aiQuery = document.getElementById("aiQuery");

@@ -238,36 +238,82 @@
         <div class="section-head">
           <p class="kicker">Pricing</p>
           <h2>Simple, transparent, ruthless.</h2>
+          <p class="pricing-sub">No hidden fees. Cancel anytime.</p>
+        </div>
+
+        <div class="billing-toggle" role="group" aria-label="Billing period">
+          <button class="billing-btn is-active" data-billing="monthly">Monthly</button>
+          <button class="billing-btn" data-billing="annual">
+            Annual
+            <span class="billing-save">2 months free</span>
+          </button>
         </div>
 
         <div class="plans">
-          <article class="plan glass">
-            <p class="plan-name">Starter</p>
-            <p class="plan-desc">For buyers actively house-hunting.</p>
-            <div class="plan-price"><span class="plan-price-amount">$15</span><span class="plan-price-unit">one-time</span></div>
+
+          <!-- Free -->
+          <article class="plan plan-free glass">
+            <p class="plan-tier">Free</p>
+            <p class="plan-desc">Try it. No credit card needed.</p>
+            <div class="plan-price">
+              <span class="plan-price-amount">$0</span>
+              <span class="plan-price-unit">/forever</span>
+            </div>
+            <p class="plan-annual-note" aria-hidden="true">&nbsp;</p>
             <ul class="plan-features">
-              <li><span class="check">✓</span> 30 days of live alerts</li>
-              <li><span class="check">✓</span> Up to 3 saved searches</li>
-              <li><span class="check">✓</span> Instant email notifications</li>
               <li><span class="check">✓</span> AI natural-language search</li>
+              <li><span class="check">✓</span> 1 saved alert</li>
+              <li><span class="check">✓</span> Email notifications</li>
+              <li><span class="check">✓</span> Checks every 30 minutes</li>
             </ul>
-            <button class="btn-secondary btn-block">Get Starter</button>
+            <button class="btn-secondary btn-block">Get started free</button>
           </article>
 
-          <article class="plan plan-featured glass">
-            <span class="plan-badge">Most Popular</span>
-            <p class="plan-name">Pro</p>
-            <p class="plan-desc">For realtors and serious investors.</p>
-            <div class="plan-price"><span class="plan-price-amount">$49</span><span class="plan-price-unit">/month</span></div>
+          <!-- Home Buyer Pro -->
+          <article class="plan plan-pro glass">
+            <p class="plan-tier">Home Buyer Pro</p>
+            <p class="plan-desc">For buyers actively hunting the market.</p>
+            <div class="plan-price">
+              <span class="plan-price-amount" data-monthly="$9.99" data-annual="$8.33">$9.99</span>
+              <span class="plan-price-unit">/month</span>
+            </div>
+            <p class="plan-annual-note plan-annual-billed" hidden>Billed $99.90/year</p>
             <ul class="plan-features">
-              <li><span class="check">✓</span> Unlimited saved searches</li>
-              <li><span class="check">✓</span> Multi-buyer client profiles</li>
-              <li><span class="check">✓</span> Priority sub-minute alerts</li>
-              <li><span class="check">✓</span> White-label client emails</li>
-              <li><span class="check">✓</span> Dedicated support channel</li>
+              <li><span class="check">✓</span> Everything in Free</li>
+              <li><span class="check">✓</span> 10 saved alerts</li>
+              <li><span class="check">✓</span> Email notifications</li>
+              <li><span class="check">✓</span> Checks every 5 minutes</li>
             </ul>
-            <button class="btn-primary btn-block"><span class="btn-label">Start Pro</span><span class="btn-shine" aria-hidden="true"></span></button>
+            <button class="btn-primary btn-block">
+              <span class="btn-label" data-monthly="Start for $9.99/mo" data-annual="Start for $8.33/mo">Start for $9.99/mo</span>
+              <span class="btn-shine" aria-hidden="true"></span>
+            </button>
           </article>
+
+          <!-- Realtor & Investor -->
+          <article class="plan plan-realtor glass">
+            <span class="plan-badge">Most Popular</span>
+            <p class="plan-tier">Realtor &amp; Investor</p>
+            <p class="plan-desc">For pros who can't afford to be second.</p>
+            <div class="plan-price">
+              <span class="plan-price-amount" data-monthly="$29" data-annual="$24">$29</span>
+              <span class="plan-price-unit">/month</span>
+            </div>
+            <p class="plan-annual-note plan-annual-billed" hidden>Billed $290/year</p>
+            <ul class="plan-features">
+              <li><span class="check check-violet">✓</span> Everything in Pro</li>
+              <li><span class="check check-violet">✓</span> Unlimited saved alerts</li>
+              <li><span class="check check-violet">✓</span> Multiple cities at once</li>
+              <li><span class="check check-violet">✓</span> SMS notifications</li>
+              <li><span class="check check-violet">✓</span> Checks every 60 seconds</li>
+              <li><span class="check check-violet">✓</span> Instant email on match</li>
+            </ul>
+            <button class="btn-primary btn-block">
+              <span class="btn-label" data-monthly="Start for $29/mo" data-annual="Start for $24/mo">Start for $29/mo</span>
+              <span class="btn-shine" aria-hidden="true"></span>
+            </button>
+          </article>
+
         </div>
       </section>
     </main>
