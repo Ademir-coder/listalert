@@ -12,8 +12,17 @@ let billingPeriod = "monthly";
   if (!window.Clerk) return; // Clerk unavailable (blocked, offline, etc.)
 
   await window.Clerk.load();
-  renderAuthUI(window.Clerk.user);
-  window.Clerk.addListener(({ user }) => renderAuthUI(user));
+  let prevUser = window.Clerk.user;
+  renderAuthUI(prevUser);
+
+  window.Clerk.addListener(({ user }) => {
+    if (user && !prevUser) {
+      window.location.href = "/dashboard";
+      return;
+    }
+    prevUser = user;
+    renderAuthUI(user);
+  });
 })();
 
 function renderAuthUI(user) {
