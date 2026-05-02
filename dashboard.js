@@ -1,39 +1,19 @@
-// ─── Clerk init + auth guard ───────────────────────────────────────────────
+// ─── Auth check via /api/me ───────────────────────────────────────────────
 (async function initDashboard() {
   try {
-    // Wait for Clerk CDN script to execute (loaded async)
-    const deadline = Date.now() + 8000;
-    while (!window.Clerk && Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 80));
-    }
-    if (!window.Clerk) {
-      showAuthError("Authentication unavailable. Please refresh the page.");
-      return;
-    }
-
-    // Race Clerk.load() against a timeout so a hung load doesn't freeze the page
-    await Promise.race([
-      window.Clerk.load(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Clerk timed out")), 8000)
-      ),
-    ]);
-
-    if (!window.Clerk.user) {
-      // Not signed in — send to homepage
+    const res = await fetch("/api/me");
+    if (res.status === 401) {
       window.location.replace("/");
       return;
     }
+    if (!res.ok) throw new Error(`Server error ${res.status}`);
 
+    const user = await res.json();
     revealDashboard();
-    populateSidebar(window.Clerk.user);
-    populateAccount(window.Clerk.user);
+    populateSidebar(user);
+    populateAccount(user);
     loadStats();
     loadAlerts();
-
-    window.Clerk.addListener(({ user }) => {
-      if (!user) window.location.replace("/");
-    });
   } catch (err) {
     console.error("Dashboard init error:", err);
     showAuthError("Something went wrong loading the dashboard. <a href='/' style='color:#a78bfa;text-decoration:underline'>Go back home</a>");
@@ -57,7 +37,7 @@ function showAuthError(msg) {
 function populateSidebar(user) {
   const first = user.firstName || "";
   const last = user.lastName || "";
-  const email = user.emailAddresses?.[0]?.emailAddress || "";
+  const email = user.email || "";
   const initials = ((first[0] || "") + (last[0] || "")).toUpperCase() ||
     (email[0] || "?").toUpperCase();
   const displayName = first ? `${first} ${last}`.trim() : (email.split("@")[0] || "Account");
@@ -73,7 +53,7 @@ function populateSidebar(user) {
 
 // ─── Sign out ─────────────────────────────────────────────────────────────
 document.getElementById("sidebarSignOut").addEventListener("click", async () => {
-  await window.Clerk?.signOut();
+  try { await fetch("/api/signout", { method: "POST" }); } catch {}
   window.location.replace("/");
 });
 
@@ -90,20 +70,10 @@ function activateSection(target) {
   dashSections.forEach((s) => s.classList.toggle("is-active", s.id === `section-${target}`));
 }
 
-// ─── Auth token ───────────────────────────────────────────────────────────
-async function getToken() {
-  const token = await window.Clerk?.session?.getToken();
-  if (!token) throw new Error("Session expired. Please sign in again.");
-  return token;
-}
-
 // ─── Stats (overview) ────────────────────────────────────────────────────
 async function loadStats() {
   try {
-    const token = await getToken();
-    const res = await fetch("/api/me/stats", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch("/api/me/stats");
     if (!res.ok) throw new Error("Stats unavailable.");
     const data = await res.json();
 
@@ -149,10 +119,7 @@ function renderActivityFeed(items) {
 // ─── My Alerts ────────────────────────────────────────────────────────────
 async function loadAlerts() {
   try {
-    const token = await getToken();
-    const res = await fetch("/api/me/alerts", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch("/api/me/alerts");
     if (!res.ok) throw new Error("Failed to load alerts.");
     const alerts = await res.json();
     renderAlerts(alerts);
@@ -245,11 +212,7 @@ async function deleteAlert(id, cardEl) {
   cardEl.style.opacity = "0.45";
   cardEl.style.pointerEvents = "none";
   try {
-    const token = await getToken();
-    const res = await fetch(`/api/me/alerts/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch(`/api/me/alerts/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Delete failed.");
     cardEl.style.transition = "opacity 0.2s ease, transform 0.2s ease";
     cardEl.style.transform = "translateX(16px)";
@@ -333,10 +296,9 @@ async function runDashSearch() {
 
 // ─── Account section ──────────────────────────────────────────────────────
 function populateAccount(user) {
-  const email = user.emailAddresses?.[0]?.emailAddress || "—";
-  const first = user.firstName || "";
-  const last = user.lastName || "";
-  const name = (first + " " + last).trim() || email.split("@")[0] || "—";
+  const email = user.email || "—";
+  const name = (`${user.firstName || ""} ${user.lastName || ""}`).trim() ||
+    (user.email ? user.email.split("@")[0] : "—");
   const joined = user.createdAt
     ? new Date(user.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long" })
     : "—";

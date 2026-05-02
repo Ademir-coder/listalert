@@ -5,7 +5,7 @@ const cors = require("cors");
 const fs = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
-const { clerkMiddleware, requireAuth, getAuth } = require("@clerk/express");
+const { clerkMiddleware, requireAuth, getAuth, clerkClient } = require("@clerk/express");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -51,6 +51,32 @@ app.get("/dashboard", (_req, res) => {
 });
 
 app.use(express.static(BASE_DIR));
+
+// ─── CURRENT USER ─────────────────────────────────────────────────────────────
+app.get("/api/me", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const user = await clerkClient.users.getUser(userId);
+    return res.json({
+      id: user.id,
+      firstName: user.firstName || null,
+      lastName: user.lastName || null,
+      email: user.emailAddresses?.[0]?.emailAddress || null,
+      createdAt: user.createdAt || null,
+    });
+  } catch (err) {
+    console.error("GET /api/me error:", err);
+    return res.status(500).json({ error: "Failed to fetch user." });
+  }
+});
+
+app.post("/api/signout", async (req, res) => {
+  try {
+    const { sessionId } = getAuth(req);
+    if (sessionId) await clerkClient.sessions.revokeSession(sessionId);
+  } catch {}
+  return res.json({ success: true });
+});
 
 // ─── AI SEARCH ────────────────────────────────────────────────────────────────
 app.post("/ai-search", async (req, res) => {
