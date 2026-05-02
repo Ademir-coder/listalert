@@ -13,6 +13,8 @@ const PORT = process.env.PORT || 3000;
 const BASE_DIR = __dirname;
 const ALERTS_FILE = path.join(BASE_DIR, "alerts.json");
 const SEEN_LISTINGS_FILE = path.join(BASE_DIR, "seen-listings.json");
+const ACTIVITY_FILE = path.join(BASE_DIR, "user-activity.json");
+const USER_STATS_FILE = path.join(BASE_DIR, "user-stats.json");
 
 const SIMPLYRETS_API_URL = "https://api.simplyrets.com/properties";
 const SIMPLYRETS_USERNAME = "simplyrets";
@@ -45,6 +47,10 @@ app.use(cors({ origin: "*" }));
 app.use(clerkMiddleware());
 app.use(express.static(BASE_DIR));
 
+app.get("/dashboard", (_req, res) => {
+  res.sendFile(path.join(BASE_DIR, "dashboard.html"));
+});
+
 // ─── AI SEARCH ────────────────────────────────────────────────────────────────
 app.post("/ai-search", async (req, res) => {
   try {
@@ -53,6 +59,16 @@ app.post("/ai-search", async (req, res) => {
 
     const criteria = await parseNaturalQueryWithClaude(query);
     const listings = await fetchSimplyRetsListings(criteria);
+
+    const { userId } = getAuth(req);
+    if (userId) {
+      readJsonFile(USER_STATS_FILE, {}).then((stats) => {
+        if (!stats[userId]) stats[userId] = {};
+        stats[userId].searchCount = (stats[userId].searchCount || 0) + 1;
+        return writeJsonFile(USER_STATS_FILE, stats);
+      }).catch(() => {});
+    }
+
     return res.json({ success: true, criteria, listings });
   } catch (error) {
     console.error("AI search error:", error);
@@ -115,6 +131,52 @@ app.post("/save-alert", requireAuth(), async (req, res) => {
   } catch (error) {
     console.error("Failed to save alert:", error);
     return res.status(500).json({ error: "Failed to save alert." });
+  }
+});
+
+// ─── DASHBOARD API ────────────────────────────────────────────────────────────
+app.get("/api/me/alerts", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const alerts = await readJsonFile(ALERTS_FILE, []);
+    return res.json(alerts.filter((a) => a.userId === userId));
+  } catch {
+    return res.status(500).json({ error: "Failed to fetch alerts." });
+  }
+});
+
+app.delete("/api/me/alerts/:id", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const { id } = req.params;
+    const alerts = await readJsonFile(ALERTS_FILE, []);
+    const idx = alerts.findIndex((a) => a.id === id && a.userId === userId);
+    if (idx === -1) return res.status(404).json({ error: "Alert not found." });
+    alerts.splice(idx, 1);
+    await writeJsonFile(ALERTS_FILE, alerts);
+    return res.json({ success: true });
+  } catch {
+    return res.status(500).json({ error: "Failed to delete alert." });
+  }
+});
+
+app.get("/api/me/stats", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const [alerts, activity, stats] = await Promise.all([
+      readJsonFile(ALERTS_FILE, []),
+      readJsonFile(ACTIVITY_FILE, {}),
+      readJsonFile(USER_STATS_FILE, {}),
+    ]);
+    const userStats = stats[userId] || {};
+    return res.json({
+      alertCount: alerts.filter((a) => a.userId === userId).length,
+      matchCount: userStats.matchCount || 0,
+      searchCount: userStats.searchCount || 0,
+      recentActivity: (activity[userId] || []).slice(0, 10),
+    });
+  } catch {
+    return res.status(500).json({ error: "Failed to fetch stats." });
   }
 });
 
@@ -316,6 +378,8 @@ async function writeJsonFile(filePath, data) {
 async function runAlertCheckCycle() {
   const alerts = await readJsonFile(ALERTS_FILE, []);
   const seenMap = await readJsonFile(SEEN_LISTINGS_FILE, {});
+  const activity = await readJsonFile(ACTIVITY_FILE, {});
+  const stats = await readJsonFile(USER_STATS_FILE, {});
   let emailsSent = 0;
   let alertsChecked = 0;
 
@@ -326,11 +390,34 @@ async function runAlertCheckCycle() {
     const previousIds = new Set(seenMap[alert.id] || []);
     const newMatches = listings.filter((l) => { const id = getListingId(l); return id && !previousIds.has(id); });
     const toEmail = FORCE_SEND_TEST_EMAILS ? listings : newMatches;
-    if (toEmail.length > 0) { await sendAlertEmail(alert.email, alert.criteria, toEmail); emailsSent++; }
+
+    if (toEmail.length > 0) {
+      await sendAlertEmail(alert.email, alert.criteria, toEmail);
+      emailsSent++;
+
+      if (alert.userId) {
+        if (!activity[alert.userId]) activity[alert.userId] = [];
+        const entries = toEmail.map((l) => ({
+          listingId: getListingId(l),
+          address: l.address?.full || l.address?.city || "Address unavailable",
+          city: l.address?.city || "",
+          state: l.address?.state || "",
+          price: l.listPrice || null,
+          matchedAt: new Date().toISOString(),
+          alertId: alert.id,
+        }));
+        activity[alert.userId] = [...entries, ...activity[alert.userId]].slice(0, 50);
+        if (!stats[alert.userId]) stats[alert.userId] = {};
+        stats[alert.userId].matchCount = (stats[alert.userId].matchCount || 0) + toEmail.length;
+      }
+    }
+
     seenMap[alert.id] = [...currentIds];
   }
 
   await writeJsonFile(SEEN_LISTINGS_FILE, seenMap);
+  await writeJsonFile(ACTIVITY_FILE, activity);
+  await writeJsonFile(USER_STATS_FILE, stats);
   return { alertsChecked, emailsSent };
 }
 

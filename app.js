@@ -40,7 +40,7 @@ function renderAuthUI(user) {
 }
 
 document.getElementById("navSignIn").addEventListener("click", () => {
-  window.Clerk?.openSignIn();
+  window.Clerk?.openSignIn({ redirectUrl: "/dashboard" });
 });
 
 document.getElementById("navAvatarBtn").addEventListener("click", () => {
