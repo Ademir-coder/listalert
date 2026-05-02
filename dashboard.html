@@ -15,18 +15,7 @@
   </head>
   <body>
 
-    <!-- Auth loading screen -->
-    <div class="dash-loading" id="dashLoading">
-      <div class="dash-loading-inner">
-        <div class="dash-loading-mark">
-          <span class="brand-mark"></span>
-        </div>
-        <div class="dash-loading-spinner"></div>
-      </div>
-    </div>
-
-    <!-- Dashboard layout (hidden until auth confirmed) -->
-    <div class="dash-layout" id="dashLayout" hidden>
+    <div class="dash-layout">
 
       <!-- ── Sidebar ──────────────────────────────────────────── -->
       <aside class="sidebar">
@@ -44,7 +33,6 @@
             <button class="sidebar-link" data-section="alerts">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
               My Alerts
-              <span class="sidebar-badge" id="alertsBadge" hidden></span>
             </button>
             <button class="sidebar-link" data-section="search">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -59,16 +47,16 @@
 
         <div class="sidebar-footer">
           <div class="sidebar-user">
-            <div class="sidebar-avatar" id="sidebarAvatar"></div>
+            <div class="sidebar-avatar">LA</div>
             <div class="sidebar-user-info">
-              <span class="sidebar-user-name" id="sidebarUserName"></span>
-              <span class="sidebar-user-email" id="sidebarUserEmail"></span>
+              <span class="sidebar-user-name">My Account</span>
+              <span class="sidebar-user-email">user@listalert.com</span>
             </div>
           </div>
-          <button class="sidebar-signout" id="sidebarSignOut">
+          <a href="/" class="sidebar-signout">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-            Sign out
-          </button>
+            Back to home
+          </a>
         </div>
       </aside>
 
@@ -79,7 +67,7 @@
         <section class="dash-section is-active" id="section-overview">
           <div class="dash-header">
             <div>
-              <h1 class="dash-greeting" id="dashGreeting">Good morning</h1>
+              <h1 class="dash-greeting">Welcome to your Dashboard</h1>
               <p class="dash-subtitle">Here's what's happening with your alerts.</p>
             </div>
           </div>
@@ -89,21 +77,21 @@
               <div class="stat-icon stat-icon-violet">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
               </div>
-              <div class="stat-value" id="statAlerts">—</div>
+              <div class="stat-value">0</div>
               <div class="stat-label">Active Alerts</div>
             </div>
             <div class="stat-card glass">
               <div class="stat-icon stat-icon-cyan">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
               </div>
-              <div class="stat-value" id="statMatched">—</div>
+              <div class="stat-value">0</div>
               <div class="stat-label">Listings Matched</div>
             </div>
             <div class="stat-card glass">
               <div class="stat-icon stat-icon-pink">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
               </div>
-              <div class="stat-value" id="statSearches">—</div>
+              <div class="stat-value">0</div>
               <div class="stat-label">Searches Run</div>
             </div>
           </div>
@@ -113,11 +101,9 @@
               <h2 class="activity-title">Recent Activity</h2>
               <span class="activity-sub">Listings that matched your alerts</span>
             </div>
-            <div id="activityFeed" class="activity-feed">
-              <div class="activity-empty" id="activityEmpty">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-                <p>No activity yet. Listings that match your alerts will appear here.</p>
-              </div>
+            <div class="activity-empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              <p>No activity yet. Listings that match your alerts will appear here.</p>
             </div>
           </div>
         </section>
@@ -129,15 +115,14 @@
               <p class="kicker">Your saved searches</p>
               <h1>My Alerts</h1>
             </div>
-            <button class="btn-primary" id="newAlertBtn">
+            <button class="btn-primary" onclick="document.querySelector('[data-section=search]').click()">
               <span class="btn-label">+ New Alert</span>
               <span class="btn-shine" aria-hidden="true"></span>
             </button>
           </div>
-          <div id="alertsList" class="alerts-list">
-            <div class="alerts-loading" id="alertsLoading">
-              <div class="spinner"></div>
-            </div>
+          <div class="alerts-empty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <p>No alerts yet. Create your first alert to get notified when new properties match.</p>
           </div>
         </section>
 
@@ -149,9 +134,8 @@
               <h1>Property Search</h1>
             </div>
           </div>
-
           <div class="glass dash-search-box">
-            <div class="ai-search-shell" id="dashSearchShell">
+            <div class="ai-search-shell">
               <div class="ai-search-glow"></div>
               <span class="ai-search-icon" aria-hidden="true">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -159,23 +143,22 @@
               <input
                 type="text"
                 id="dashAiQuery"
-                placeholder="3 bed house in Austin under 600k built after 2015"
+                placeholder="3 bed house in Austin under 600k"
                 autocomplete="off"
                 spellcheck="false"
               />
-              <button type="button" id="dashAiBtn" class="btn-primary">
+              <button type="button" id="dashAiBtn" class="btn-primary" onclick="runSearch()">
                 <span class="btn-label">Search</span>
                 <span class="btn-shine" aria-hidden="true"></span>
               </button>
             </div>
             <div class="suggestions">
               <span class="suggestions-label">Try</span>
-              <button class="chip" data-q="Modern 4 bedroom house in Houston under 800k">4 bed in Houston under 800k</button>
-              <button class="chip" data-q="Apartment in Austin between 250k and 400k">Austin apartment · 250k–400k</button>
-              <button class="chip" data-q="3 bed house built after 2015 under 500k">New build · under 500k</button>
+              <button class="chip" onclick="document.getElementById('dashAiQuery').value=this.dataset.q;runSearch()" data-q="Modern 4 bedroom house in Houston under 800k">4 bed in Houston under 800k</button>
+              <button class="chip" onclick="document.getElementById('dashAiQuery').value=this.dataset.q;runSearch()" data-q="Apartment in Austin between 250k and 400k">Austin apartment · 250k–400k</button>
+              <button class="chip" onclick="document.getElementById('dashAiQuery').value=this.dataset.q;runSearch()" data-q="3 bed house built after 2015 under 500k">New build · under 500k</button>
             </div>
           </div>
-
           <div id="dashSearchStatus" class="status" aria-live="polite"></div>
           <div id="dashResults" class="listings-grid" aria-live="polite"></div>
         </section>
@@ -188,47 +171,39 @@
               <h1>Account</h1>
             </div>
           </div>
-
           <div class="account-grid">
             <div class="account-plan-card glass">
               <p class="account-section-label">Current Plan</p>
-              <p class="account-plan-name" id="accountPlanName">Free</p>
-              <p class="account-plan-desc" id="accountPlanDesc">Great for getting started</p>
-
+              <p class="account-plan-name">Free</p>
+              <p class="account-plan-desc">Great for getting started</p>
               <div class="plan-usage">
                 <div class="plan-usage-row">
                   <span class="plan-usage-label">Saved Alerts</span>
-                  <span class="plan-usage-count" id="usageCount">— / —</span>
+                  <span class="plan-usage-count">0 / 1</span>
                 </div>
                 <div class="plan-usage-track">
-                  <div class="plan-usage-fill" id="usageFill" style="width: 0%"></div>
+                  <div class="plan-usage-fill" style="width: 0%"></div>
                 </div>
               </div>
-
               <a href="/#pricing" class="btn-primary btn-block account-upgrade-btn">
                 <span class="btn-label">Upgrade Plan →</span>
                 <span class="btn-shine" aria-hidden="true"></span>
               </a>
             </div>
-
             <div class="account-info-card glass">
               <p class="account-section-label">Profile</p>
               <div class="account-info-rows">
                 <div class="account-row">
                   <span class="account-row-label">Email</span>
-                  <span class="account-row-value" id="accountEmail">—</span>
+                  <span class="account-row-value">—</span>
                 </div>
                 <div class="account-row">
                   <span class="account-row-label">Name</span>
-                  <span class="account-row-value" id="accountName">—</span>
+                  <span class="account-row-value">—</span>
                 </div>
                 <div class="account-row">
                   <span class="account-row-label">Member since</span>
-                  <span class="account-row-value" id="accountJoined">—</span>
-                </div>
-                <div class="account-row">
-                  <span class="account-row-label">User ID</span>
-                  <span class="account-row-value account-row-mono" id="accountUserId">—</span>
+                  <span class="account-row-value">—</span>
                 </div>
               </div>
             </div>
@@ -238,6 +213,97 @@
       </main>
     </div>
 
-    <script src="./dashboard.js"></script>
+    <script>
+      // Section navigation
+      const links = document.querySelectorAll('.sidebar-link[data-section]');
+      const sections = document.querySelectorAll('.dash-section');
+      links.forEach(link => {
+        link.addEventListener('click', () => {
+          const t = link.dataset.section;
+          links.forEach(l => l.classList.toggle('is-active', l.dataset.section === t));
+          sections.forEach(s => s.classList.toggle('is-active', s.id === 'section-' + t));
+        });
+      });
+
+      // AI Search
+      document.getElementById('dashAiQuery').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); runSearch(); }
+      });
+
+      async function runSearch() {
+        const query = document.getElementById('dashAiQuery').value.trim();
+        if (!query) return;
+        const status = document.getElementById('dashSearchStatus');
+        const results = document.getElementById('dashResults');
+        results.innerHTML = '';
+        status.className = 'status status-loading';
+        status.innerHTML = '<span class="spinner"></span><span>Searching…</span>';
+        document.getElementById('dashAiBtn').disabled = true;
+        try {
+          const res = await fetch('/ai-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Search failed.');
+          status.textContent = '';
+          status.className = 'status';
+          if (!data.listings?.length) {
+            status.className = 'status status-info';
+            status.textContent = 'No listings matched. Try broader criteria.';
+            return;
+          }
+          data.listings.forEach((l, i) => {
+            const card = buildCard(l);
+            card.style.animationDelay = Math.min(i * 60, 600) + 'ms';
+            results.appendChild(card);
+          });
+        } catch (err) {
+          status.className = 'status status-error';
+          status.textContent = err.message;
+        } finally {
+          document.getElementById('dashAiBtn').disabled = false;
+        }
+      }
+
+      function buildCard(l) {
+        const address = l.address?.full || l.address?.city || 'Address unavailable';
+        const city = l.address?.city || '';
+        const state = l.address?.state || '';
+        const price = typeof l.listPrice === 'number'
+          ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(l.listPrice)
+          : 'N/A';
+        const beds = l.property?.bedrooms ?? null;
+        const baths = l.property?.bathsFull ?? l.property?.bathrooms ?? null;
+        const sqft = l.property?.area ?? null;
+        const photo = l.photos?.[0] || null;
+        const esc = v => String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        const placeholder = `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+        const card = document.createElement('article');
+        card.className = 'listing-card';
+        card.innerHTML = `
+          <div class="listing-photo">
+            <div class="no-photo-placeholder">${placeholder}</div>
+            ${price !== 'N/A' ? `<div class="listing-price-badge">${esc(price)}</div>` : ''}
+          </div>
+          <div class="listing-body">
+            <div class="listing-address">${esc(address)}</div>
+            ${city || state ? `<div class="listing-location">${esc([city,state].filter(Boolean).join(', '))}</div>` : ''}
+            <div class="listing-stats">
+              <span class="stat"><strong>${beds ?? '—'}</strong> Beds</span>
+              <span class="stat"><strong>${baths ?? '—'}</strong> Baths</span>
+              <span class="stat"><strong>${sqft ? Number(sqft).toLocaleString() : '—'}</strong> Sqft</span>
+            </div>
+          </div>`;
+        if (photo) {
+          const img = document.createElement('img');
+          img.src = photo; img.alt = 'Property'; img.loading = 'lazy';
+          img.addEventListener('error', () => img.remove());
+          card.querySelector('.listing-photo').prepend(img);
+        }
+        return card;
+      }
+    </script>
   </body>
 </html>
