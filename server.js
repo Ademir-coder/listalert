@@ -45,11 +45,12 @@ let isScheduledCheckRunning = false;
 app.use(express.json());
 app.use(cors({ origin: "*" }));
 app.use(clerkMiddleware());
-app.use(express.static(BASE_DIR));
 
 app.get("/dashboard", (_req, res) => {
   res.sendFile(path.join(BASE_DIR, "dashboard.html"));
 });
+
+app.use(express.static(BASE_DIR));
 
 // ─── AI SEARCH ────────────────────────────────────────────────────────────────
 app.post("/ai-search", async (req, res) => {

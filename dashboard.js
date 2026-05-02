@@ -1,30 +1,43 @@
 // ─── Clerk init + auth guard ───────────────────────────────────────────────
 (async function initDashboard() {
-  const deadline = Date.now() + 5000;
-  while (!window.Clerk && Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 80));
+  try {
+    // Wait for Clerk CDN script to execute (loaded async)
+    const deadline = Date.now() + 8000;
+    while (!window.Clerk && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 80));
+    }
+    if (!window.Clerk) {
+      showAuthError("Authentication unavailable. Please refresh the page.");
+      return;
+    }
+
+    // Race Clerk.load() against a timeout so a hung load doesn't freeze the page
+    await Promise.race([
+      window.Clerk.load(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Clerk timed out")), 8000)
+      ),
+    ]);
+
+    if (!window.Clerk.user) {
+      // Not signed in — send to homepage
+      window.location.replace("/");
+      return;
+    }
+
+    revealDashboard();
+    populateSidebar(window.Clerk.user);
+    populateAccount(window.Clerk.user);
+    loadStats();
+    loadAlerts();
+
+    window.Clerk.addListener(({ user }) => {
+      if (!user) window.location.replace("/");
+    });
+  } catch (err) {
+    console.error("Dashboard init error:", err);
+    showAuthError("Something went wrong loading the dashboard. <a href='/' style='color:#a78bfa;text-decoration:underline'>Go back home</a>");
   }
-  if (!window.Clerk) {
-    showAuthError("Authentication unavailable. Please refresh and try again.");
-    return;
-  }
-
-  await window.Clerk.load();
-
-  if (!window.Clerk.user) {
-    window.location.replace("/");
-    return;
-  }
-
-  revealDashboard();
-  populateSidebar(window.Clerk.user);
-  populateAccount(window.Clerk.user);
-  loadStats();
-  loadAlerts();
-
-  window.Clerk.addListener(({ user }) => {
-    if (!user) window.location.replace("/");
-  });
 })();
 
 function revealDashboard() {
