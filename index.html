@@ -12,6 +12,14 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
+    <!-- Clerk vanilla JS SDK — loaded from your instance's CDN -->
+    <script
+      async
+      crossorigin="anonymous"
+      data-clerk-publishable-key="pk_test_bW92aW5nLWhvbmV5YmVlLTUwLmNsZXJrLmFjY291bnRzLmRldiQ"
+      src="https://moving-honeybee-50.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+      type="text/javascript"
+    ></script>
   </head>
   <body>
     <div class="orb orb-1" aria-hidden="true"></div>
@@ -29,10 +37,20 @@
         <a href="#how">How it works</a>
         <a href="#pricing">Pricing</a>
       </nav>
-      <a href="#hero" class="nav-cta">
-        Get Started
-        <span class="arrow">→</span>
-      </a>
+      <div class="nav-auth">
+        <!-- Shown when signed out -->
+        <button class="nav-sign-in" id="navSignIn" hidden>Sign In</button>
+        <!-- Shown when signed in -->
+        <div class="nav-user" id="navUser" hidden>
+          <button class="nav-avatar-btn" id="navAvatarBtn" aria-label="Account menu" aria-expanded="false">
+            <span id="navInitials"></span>
+          </button>
+          <div class="nav-dropdown" id="navDropdown" hidden>
+            <span class="nav-dropdown-name" id="navDropdownName"></span>
+            <button class="nav-sign-out-btn" id="navSignOut">Sign out</button>
+          </div>
+        </div>
+      </div>
     </header>
 
     <main>

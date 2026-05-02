@@ -2,6 +2,70 @@
 let currentCriteria = null;
 let billingPeriod = "monthly";
 
+// ─── Clerk auth ───────────────────────────────────────────────────────────────
+(async function setupClerk() {
+  // Poll for Clerk CDN script to finish executing (it's loaded async)
+  const deadline = Date.now() + 5000;
+  while (!window.Clerk && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 80));
+  }
+  if (!window.Clerk) return; // Clerk unavailable (blocked, offline, etc.)
+
+  await window.Clerk.load();
+  renderAuthUI(window.Clerk.user);
+  window.Clerk.addListener(({ user }) => renderAuthUI(user));
+})();
+
+function renderAuthUI(user) {
+  const signInBtn = document.getElementById("navSignIn");
+  const navUser = document.getElementById("navUser");
+  const navInitials = document.getElementById("navInitials");
+  const navDropdownName = document.getElementById("navDropdownName");
+
+  if (user) {
+    const first = user.firstName || "";
+    const last = user.lastName || "";
+    const initials = (first[0] || "") + (last[0] || "") ||
+      (user.emailAddresses?.[0]?.emailAddress?.[0] || "?").toUpperCase();
+    const displayName = first || user.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "Account";
+
+    navInitials.textContent = initials.toUpperCase();
+    navDropdownName.textContent = displayName;
+    signInBtn.hidden = true;
+    navUser.hidden = false;
+  } else {
+    signInBtn.hidden = false;
+    navUser.hidden = true;
+  }
+}
+
+document.getElementById("navSignIn").addEventListener("click", () => {
+  window.Clerk?.openSignIn();
+});
+
+document.getElementById("navAvatarBtn").addEventListener("click", () => {
+  const dropdown = document.getElementById("navDropdown");
+  const btn = document.getElementById("navAvatarBtn");
+  const isOpen = !dropdown.hidden;
+  dropdown.hidden = isOpen;
+  btn.setAttribute("aria-expanded", String(!isOpen));
+});
+
+document.getElementById("navSignOut").addEventListener("click", async () => {
+  document.getElementById("navDropdown").hidden = true;
+  await window.Clerk?.signOut();
+});
+
+// Close dropdown when clicking outside
+document.addEventListener("click", (e) => {
+  const navUser = document.getElementById("navUser");
+  const dropdown = document.getElementById("navDropdown");
+  if (!navUser.contains(e.target) && !dropdown.hidden) {
+    dropdown.hidden = true;
+    document.getElementById("navAvatarBtn").setAttribute("aria-expanded", "false");
+  }
+});
+
 // ─── Billing toggle ───────────────────────────────────────────────────────────
 document.querySelectorAll(".billing-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -129,6 +193,12 @@ async function runAiSearch() {
 alertForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
+  // Require sign-in before saving an alert
+  if (!window.Clerk?.user) {
+    window.Clerk?.openSignIn();
+    return;
+  }
+
   const email = alertEmail.value.trim();
   if (!email) return flashField(alertEmail);
 
@@ -147,13 +217,27 @@ alertForm.addEventListener("submit", async (e) => {
   submitBtn.querySelector(".btn-label").textContent = "Activating…";
 
   try {
+    const token = await window.Clerk.session?.getToken();
+    if (!token) throw new Error("Session expired. Please sign in again.");
+
     const res = await fetch("/save-alert", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
       body: JSON.stringify({ email, criteria }),
     });
 
     const data = await res.json();
+
+    if (res.status === 401) {
+      window.Clerk?.openSignIn();
+      throw new Error("Session expired. Please sign in again.");
+    }
+    if (res.status === 403 && data.code === "ALERT_LIMIT_REACHED") {
+      throw new Error("Free plan allows 1 alert. Upgrade to Pro for unlimited alerts.");
+    }
     if (!res.ok) throw new Error(data.error || "Failed to save alert.");
 
     submitBtn.querySelector(".btn-label").textContent = "Alert active ✓";
@@ -164,11 +248,11 @@ alertForm.addEventListener("submit", async (e) => {
 
     try { localStorage.setItem("listalert_criteria", JSON.stringify(criteria)); } catch {}
   } catch (err) {
-    submitBtn.querySelector(".btn-label").textContent = "Try again";
+    submitBtn.querySelector(".btn-label").textContent = err.message.length < 40 ? err.message : "Try again";
     setTimeout(() => {
       submitBtn.disabled = false;
       submitBtn.querySelector(".btn-label").innerHTML = originalLabel;
-    }, 2400);
+    }, 3000);
   }
 });
 

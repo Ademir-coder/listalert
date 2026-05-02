@@ -1,8 +1,11 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
+const { clerkMiddleware, requireAuth, getAuth } = require("@clerk/express");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,25 +24,35 @@ const EMAIL_FROM = "onboarding@resend.dev";
 const ALERT_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const FORCE_SEND_TEST_EMAILS = false;
 
+const FREE_TIER_ALERT_LIMIT = 1;
+
+// ─── RAILWAY DEPLOYMENT ───────────────────────────────────────────────────────
+// Add these environment variables in Railway:
+//   1. Go to your Railway project → Variables tab
+//   2. Add each key individually:
+//
+//   CLERK_SECRET_KEY      → sk_live_... (from clerk.com → API Keys)
+//   CLERK_PUBLISHABLE_KEY → pk_live_... (from clerk.com → API Keys)
+//   ANTHROPIC_API_KEY     → your Anthropic key (from console.anthropic.com)
+//
+// Never commit your real .env to git — use .env.example as the template.
+// ─────────────────────────────────────────────────────────────────────────────
+
 let isScheduledCheckRunning = false;
 
 app.use(express.json());
 app.use(cors({ origin: "*" }));
+app.use(clerkMiddleware());
 app.use(express.static(BASE_DIR));
 
-// ─── AI SEARCH: parse + fetch listings in one shot ───────────────────────────
+// ─── AI SEARCH ────────────────────────────────────────────────────────────────
 app.post("/ai-search", async (req, res) => {
   try {
     const query = String(req.body?.query || "").trim();
     if (!query) return res.status(400).json({ error: "Query is required." });
 
-    // 1. Ask Claude to parse the query
     const criteria = await parseNaturalQueryWithClaude(query);
-
-    // 2. Fetch real listings from SimplyRETS
     const listings = await fetchSimplyRetsListings(criteria);
-
-    // 3. Return both so the frontend can show results immediately
     return res.json({ success: true, criteria, listings });
   } catch (error) {
     console.error("AI search error:", error);
@@ -47,7 +60,7 @@ app.post("/ai-search", async (req, res) => {
   }
 });
 
-// ─── MANUAL SEARCH: fetch listings by criteria directly ──────────────────────
+// ─── MANUAL SEARCH ────────────────────────────────────────────────────────────
 app.post("/search", async (req, res) => {
   try {
     const criteria = req.body?.criteria;
@@ -60,20 +73,37 @@ app.post("/search", async (req, res) => {
   }
 });
 
-// ─── SAVE ALERT ───────────────────────────────────────────────────────────────
-app.post("/save-alert", async (req, res) => {
+// ─── SAVE ALERT (requires auth) ───────────────────────────────────────────────
+app.post("/save-alert", requireAuth(), async (req, res) => {
   try {
+    const { userId } = getAuth(req);
     const { email, criteria } = req.body ?? {};
+
     if (!isValidEmail(email) || !isValidCriteria(criteria)) {
       return res.status(400).json({ error: "Invalid payload." });
     }
 
     const alerts = await readJsonFile(ALERTS_FILE, []);
     const id = buildAlertId(email, criteria);
-    const existingIndex = alerts.findIndex((a) => a.id === id);
-    const payload = { id, email, criteria, updatedAt: new Date().toISOString() };
 
-    if (existingIndex >= 0) {
+    // Check if this exact alert already exists for this user (it's an update, not new)
+    const existingIndex = alerts.findIndex((a) => a.id === id && a.userId === userId);
+    const isUpdate = existingIndex >= 0;
+
+    if (!isUpdate) {
+      // Enforce free tier limit: count all alerts belonging to this user
+      const userAlertCount = alerts.filter((a) => a.userId === userId).length;
+      if (userAlertCount >= FREE_TIER_ALERT_LIMIT) {
+        return res.status(403).json({
+          error: `Free plan is limited to ${FREE_TIER_ALERT_LIMIT} saved alert. Upgrade to Pro for unlimited alerts.`,
+          code: "ALERT_LIMIT_REACHED",
+        });
+      }
+    }
+
+    const payload = { id, email, criteria, userId, updatedAt: new Date().toISOString() };
+
+    if (isUpdate) {
       alerts[existingIndex] = payload;
     } else {
       alerts.push({ ...payload, createdAt: payload.updatedAt });
